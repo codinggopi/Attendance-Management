@@ -11,10 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BrainCircuit, UserPlus, ListChecks, CheckCircle, AlertCircle, XCircle, Clock, Pencil, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { courses as initialCourses, students as initialStudents, teachers as initialTeachers } from '@/lib/data';
 import type { Course, Student, AttendanceStatus, Teacher } from '@/lib/types';
 import { predictStudentAbsence } from '@/ai/flows/predict-student-absence';
-import { usePersistentState } from '@/hooks/use-persistent-state';
 import {
   Dialog,
   DialogContent,
@@ -45,9 +43,8 @@ const TeacherSelector = ({ teachers, currentTeacherId, onTeacherChange }: { teac
     )
 }
 
-const AttendanceTaker = ({ allStudents, teacherId }: { allStudents: Student[], teacherId: string }) => {
+const AttendanceTaker = ({ allStudents, teacherId, courses, onUpdateCourse, onSaveAttendance }: { allStudents: Student[], teacherId: string, courses: Course[], onUpdateCourse: (id: string, name: string) => void, onSaveAttendance: (records: Record<string, AttendanceStatus>) => void }) => {
   const { toast } = useToast();
-  const [courses, setCourses] = usePersistentState<Course[]>('courses', initialCourses);
   const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>(undefined);
   const [studentsInCourse, setStudentsInCourse] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({});
@@ -85,7 +82,7 @@ const AttendanceTaker = ({ allStudents, teacherId }: { allStudents: Student[], t
   };
   
   const handleSubmit = () => {
-    console.log("Submitting attendance:", attendance);
+    onSaveAttendance(attendance);
     toast({
       title: "Attendance Submitted!",
       description: "The attendance records have been saved.",
@@ -94,7 +91,7 @@ const AttendanceTaker = ({ allStudents, teacherId }: { allStudents: Student[], t
 
   const handleUpdateCourseName = () => {
     if (!selectedCourseId) return;
-    setCourses(prevCourses => prevCourses.map(c => c.id === selectedCourseId ? {...c, name: editedCourseName} : c));
+    onUpdateCourse(selectedCourseId, editedCourseName);
     toast({ title: "Course Updated", description: "Course name has been saved." });
   };
 
@@ -343,30 +340,107 @@ const AIPredictions = ({ allStudents, courses }: { allStudents: Student[], cours
 
 
 export default function TeacherDashboard() {
-  const [allStudents, setAllStudents] = usePersistentState<Student[]>('students', initialStudents);
-  const [teachers] = usePersistentState<Teacher[]>('teachers', initialTeachers);
-  const [courses] = usePersistentState<Course[]>('courses', initialCourses);
+  const { toast } = useToast();
+  const [allStudents, setAllStudents] = useState<Student[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [currentTeacherId, setCurrentTeacherId] = useState('');
-  const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    setIsClient(true);
-    if (teachers.length > 0) {
-      setCurrentTeacherId(teachers[0].id)
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const [studentsRes, teachersRes, coursesRes] = await Promise.all([
+        fetch('/api/students'),
+        fetch('/api/teachers'),
+        fetch('/api/courses'),
+      ]);
+      const [studentsData, teachersData, coursesData] = await Promise.all([
+        studentsRes.json(),
+        teachersRes.json(),
+        coursesRes.json(),
+      ]);
+
+      setAllStudents(studentsData);
+      setTeachers(teachersData);
+      setCourses(coursesData);
+      if (teachersData.length > 0) {
+        setCurrentTeacherId(teachersData[0].id);
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error fetching data",
+        description: "Could not load data from the server.",
+      });
+      console.error("Failed to fetch data:", error);
+    } finally {
+      setIsLoading(false);
     }
-  }, [teachers]);
-  
-
-  const handleAddStudent = (studentData: Omit<Student, 'id'>) => {
-      const newStudent: Student = {
-          id: `s${Date.now()}`,
-          ...studentData
-      };
-      setAllStudents(prev => [...prev, newStudent]);
   };
 
-  if (!isClient) {
-    return null; // or a loading spinner
+  useEffect(() => {
+    fetchData();
+  }, [toast]);
+  
+
+  const handleAddStudent = async (studentData: Omit<Student, 'id'>) => {
+    try {
+        const response = await fetch('/api/students', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(studentData),
+        });
+        if (!response.ok) throw new Error('Failed to add student');
+        const newStudent = await response.json();
+        setAllStudents(prev => [...prev, newStudent]);
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not add student." });
+    }
+  };
+
+  const handleUpdateCourse = async (id: string, name: string) => {
+    const course = courses.find(c => c.id === id);
+    if (!course) return;
+    const updatedCourse = { ...course, name };
+     try {
+        const response = await fetch(`/api/courses/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedCourse),
+        });
+        if (!response.ok) throw new Error('Failed to update course');
+        setCourses(prev => prev.map(c => c.id === id ? updatedCourse : c));
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not update course." });
+    }
+  }
+
+  const handleSaveAttendance = async (attendance: Record<string, AttendanceStatus>) => {
+    const records = Object.entries(attendance)
+        .filter(([, status]) => status !== 'unmarked')
+        .map(([studentId, status]) => ({
+            studentId,
+            courseId: courses.find(c => c.studentIds.includes(studentId))!.id,
+            date: new Date().toISOString().split('T')[0],
+            status,
+        }));
+    
+    try {
+        const response = await fetch('/api/attendance/bulk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(records),
+        });
+        if (!response.ok) throw new Error('Failed to save attendance');
+        // Optionally refetch attendance data here or update state optimistically
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not save attendance." });
+    }
+  }
+
+  if (isLoading) {
+    return <div>Loading...</div>;
   }
 
   return (
@@ -379,7 +453,13 @@ export default function TeacherDashboard() {
             <TabsTrigger value="ai"><BrainCircuit className="mr-2 h-4 w-4" />AI Insights</TabsTrigger>
         </TabsList>
         <TabsContent value="attendance" className="mt-6">
-            <AttendanceTaker allStudents={allStudents} teacherId={currentTeacherId} />
+            <AttendanceTaker 
+              allStudents={allStudents} 
+              teacherId={currentTeacherId} 
+              courses={courses}
+              onUpdateCourse={handleUpdateCourse}
+              onSaveAttendance={handleSaveAttendance}
+            />
         </TabsContent>
         <TabsContent value="roster" className="mt-6">
             <RosterManagement onAddStudent={handleAddStudent} />
@@ -391,3 +471,5 @@ export default function TeacherDashboard() {
     </div>
   );
 }
+
+    

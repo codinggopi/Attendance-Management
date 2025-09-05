@@ -10,12 +10,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Users, UserPlus, BookUser, BrainCircuit, AlertCircle, FileText, Pencil, Check, X, PlusCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { students as initialStudents, teachers as initialTeachers, courses as initialCourses, attendanceRecords as initialAttendanceRecords } from '@/lib/data';
 import type { Student, Teacher, Course, AttendanceRecord } from '@/lib/types';
 import { predictStudentAbsence } from '@/ai/flows/predict-student-absence';
 import { generateAttendanceSummary } from '@/ai/flows/generate-attendance-summary';
 import jsPDF from 'jspdf';
-import { usePersistentState } from '@/hooks/use-persistent-state';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -326,9 +324,10 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteCourse, onDe
         const formData = new FormData(e.target as HTMLFormElement);
         const name = formData.get('name') as string;
         const teacherId = formData.get('teacherId') as string;
+        const scheduleTime = formData.get('scheduleTime') as string;
 
-        if (name && teacherId) {
-            onAddCourse({ name, teacherId });
+        if (name && teacherId && scheduleTime) {
+            onAddCourse({ name, teacherId, schedule: scheduleTime });
             toast({
                 title: "Course Added",
                 description: `${name} has been added.`,
@@ -389,6 +388,7 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteCourse, onDe
                                     <TableRow>
                                         <TableHead>Course Name</TableHead>
                                         <TableHead>Teacher</TableHead>
+                                        <TableHead>Schedule</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -399,6 +399,7 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteCourse, onDe
                                             <TableRow key={course.id}>
                                                 <TableCell>{course.name}</TableCell>
                                                 <TableCell>{teacher?.name || 'N/A'}</TableCell>
+                                                <TableCell>{course.schedule}</TableCell>
                                                 <TableCell className="text-right">
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
@@ -446,6 +447,10 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteCourse, onDe
                                     </SelectContent>
                                 </Select>
                             </div>
+                             <div>
+                                <Label htmlFor="scheduleTime">Schedule Time</Label>
+                                <Input id="scheduleTime" name="scheduleTime" type="time" required />
+                            </div>
                             <Button type="submit" className="w-full">
                                 <PlusCircle className="mr-2 h-4 w-4" /> Add Course
                             </Button>
@@ -476,7 +481,7 @@ const AiReports = ({students, courses}: {students: Student[], courses: Course[]}
             setError(null);
             try {
                 const historicalData = JSON.stringify([{ date: '2023-10-02', status: 'present' }, { date: '2023-10-04', status: 'absent' }]);
-                const scheduleData = JSON.stringify(courses.map(c => ({ name: c.name })));
+                const scheduleData = JSON.stringify(courses.map(c => ({ name: c.name, schedule: c.schedule })));
                 
                 const results = await Promise.all(
                     students.slice(0, 5).map(student => 
@@ -574,74 +579,177 @@ const AiReports = ({students, courses}: {students: Student[], courses: Course[]}
 // --- Main Admin Dashboard Component ---
 
 export default function AdminDashboard() {
-  const [students, setStudents] = usePersistentState<Student[]>('students', initialStudents);
-  const [teachers, setTeachers] = usePersistentState<Teacher[]>('teachers', initialTeachers);
-  const [courses, setCourses] = usePersistentState<Course[]>('courses', initialCourses);
-  const [attendanceRecords, setAttendanceRecords] = usePersistentState<AttendanceRecord[]>('attendanceRecords', initialAttendanceRecords);
+  const { toast } = useToast();
+  const [students, setStudents] = useState<Student[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [isClient, setIsClient] = useState(false);
-
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+        const [studentsRes, teachersRes, coursesRes, attendanceRes] = await Promise.all([
+            fetch('/api/students'),
+            fetch('/api/teachers'),
+            fetch('/api/courses'),
+            fetch('/api/attendance'),
+        ]);
+        const [studentsData, teachersData, coursesData, attendanceData] = await Promise.all([
+            studentsRes.json(),
+            teachersRes.json(),
+            coursesRes.json(),
+            attendanceRes.json(),
+        ]);
+        setStudents(studentsData);
+        setTeachers(teachersData);
+        setCourses(coursesData);
+        setAttendanceRecords(attendanceData);
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Error fetching data",
+            description: "Could not load data from the server.",
+        });
+        console.error("Failed to fetch data:", error);
+    } finally {
+        setIsLoading(false);
+    }
+  };
+  
   useEffect(() => {
-    setIsClient(true);
-  }, []);
+    fetchData();
+  }, [toast]);
 
-  const addStudent = (studentData: Omit<Student, 'id'>) => {
-    const newStudent: Student = {
-        id: `s${Date.now()}`,
-        ...studentData
-    };
-    setStudents(prev => [...prev, newStudent]);
+
+  const addStudent = async (studentData: Omit<Student, 'id'>) => {
+    try {
+        const response = await fetch('/api/students', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(studentData),
+        });
+        if (!response.ok) throw new Error('Failed to add student');
+        const newStudent = await response.json();
+        setStudents(prev => [...prev, newStudent]);
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not add student." });
+    }
   };
 
-  const addTeacher = (teacherData: Omit<Teacher, 'id'>) => {
-    const newTeacher: Teacher = {
-        id: `t${Date.now()}`,
-        ...teacherData
-    };
-    setTeachers(prev => [...prev, newTeacher]);
+  const addTeacher = async (teacherData: Omit<Teacher, 'id'>) => {
+    try {
+        const response = await fetch('/api/teachers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(teacherData),
+        });
+        if (!response.ok) throw new Error('Failed to add teacher');
+        const newTeacher = await response.json();
+        setTeachers(prev => [...prev, newTeacher]);
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not add teacher." });
+    }
   };
 
-  const addCourse = (courseData: Omit<Course, 'id' | 'studentIds'>) => {
-    const newCourse: Course = {
-        id: `c${Date.now()}`,
-        studentIds: [],
-        ...courseData
-    };
-    setCourses(prev => [...prev, newCourse]);
+  const addCourse = async (courseData: Omit<Course, 'id' | 'studentIds'>) => {
+    try {
+        const response = await fetch('/api/courses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(courseData),
+        });
+        if (!response.ok) throw new Error('Failed to add course');
+        const newCourse = await response.json();
+        setCourses(prev => [...prev, newCourse]);
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not add course." });
+    }
   };
 
-  const updateStudent = (updatedStudent: Student) => {
-    setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
+  const updateStudent = async (updatedStudent: Student) => {
+    try {
+        const response = await fetch(`/api/students/${updatedStudent.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedStudent),
+        });
+        if (!response.ok) throw new Error('Failed to update student');
+        setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not update student." });
+    }
   };
 
-  const updateTeacher = (updatedTeacher: Teacher) => {
-    setTeachers(prev => prev.map(t => t.id === updatedTeacher.id ? updatedTeacher : t));
+  const updateTeacher = async (updatedTeacher: Teacher) => {
+    try {
+        const response = await fetch(`/api/teachers/${updatedTeacher.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedTeacher),
+        });
+        if (!response.ok) throw new Error('Failed to update teacher');
+        setTeachers(prev => prev.map(t => t.id === updatedTeacher.id ? updatedTeacher : t));
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not update teacher." });
+    }
   };
 
-  const deleteStudent = (studentId: string) => {
-    setStudents(prev => prev.filter(s => s.id !== studentId));
+  const deleteStudent = async (studentId: string) => {
+    try {
+        const response = await fetch(`/api/students/${studentId}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete student');
+        setStudents(prev => prev.filter(s => s.id !== studentId));
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not delete student." });
+    }
   };
 
-  const deleteTeacher = (teacherId: string) => {
-    setTeachers(prev => prev.filter(t => t.id !== teacherId));
+  const deleteTeacher = async (teacherId: string) => {
+    try {
+        const response = await fetch(`/api/teachers/${teacherId}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete teacher');
+        setTeachers(prev => prev.filter(t => t.id !== teacherId));
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not delete teacher." });
+    }
   };
 
-  const deleteCourse = (courseId: string) => {
-    setCourses(prev => prev.filter(c => c.id !== courseId));
+  const deleteCourse = async (courseId: string) => {
+    try {
+        const response = await fetch(`/api/courses/${courseId}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete course');
+        setCourses(prev => prev.filter(c => c.id !== courseId));
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not delete course." });
+    }
   };
   
-  const deleteAllUsers = () => {
-    setStudents([]);
-    setTeachers([]);
-    setAttendanceRecords([]); 
+  const deleteAllUsers = async () => {
+    try {
+        const response = await fetch('/api/users/all', { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete all users');
+        setStudents([]);
+        setTeachers([]);
+        setAttendanceRecords([]); 
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not delete all users." });
+    }
   }
   
-  const deleteAllCourses = () => {
-    setCourses([]);
+  const deleteAllCourses = async () => {
+    try {
+        const response = await fetch('/api/courses/all', { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete all courses');
+        setCourses([]);
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not delete all courses." });
+    }
   }
 
-  if (!isClient) {
-    return null; // or a loading spinner
+  if (isLoading) {
+    return <div>Loading...</div>;
   }
 
   return (
@@ -676,3 +784,5 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+    

@@ -7,9 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle, XCircle, Clock, CalendarDays, AlertCircle, Pencil, PlusCircle, BookOpen, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { students as initialStudents, courses as initialCourses, attendanceRecords as initialAttendanceRecords } from '@/lib/data';
 import type { AttendanceRecord, AttendanceStatus, Course, Student } from '@/lib/types';
-import { usePersistentState } from '@/hooks/use-persistent-state';
 import {
   Dialog,
   DialogContent,
@@ -124,9 +122,8 @@ const SelfCheckInCard = ({ courses, student, onCheckIn }: { courses: Course[], s
 };
 
 
-const AttendanceHistoryCard = ({ courses, studentId }: { courses: Course[], studentId: string }) => {
+const AttendanceHistoryCard = ({ courses, studentId, attendanceRecords, onUpdateRecord }: { courses: Course[], studentId: string, attendanceRecords: AttendanceRecord[], onUpdateRecord: (record: AttendanceRecord) => void }) => {
   const { toast } = useToast();
-  const [attendanceRecords, setAttendanceRecords] = usePersistentState<AttendanceRecord[]>(`attendanceRecords`, initialAttendanceRecords);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [editedStatus, setEditedStatus] = useState<AttendanceStatus>('present');
   const enrolledCourses = courses.filter(c => c.studentIds.includes(studentId));
@@ -138,8 +135,8 @@ const AttendanceHistoryCard = ({ courses, studentId }: { courses: Course[], stud
     setEditedStatus(record.status);
   }
 
-  const handleSave = (recordId: string) => {
-    setAttendanceRecords(prev => prev.map(r => r.id === recordId ? { ...r, status: editedStatus } : r));
+  const handleSave = (record: AttendanceRecord) => {
+    onUpdateRecord({ ...record, status: editedStatus });
     setEditingRecordId(null);
     toast({ title: "Record updated" });
   }
@@ -198,7 +195,7 @@ const AttendanceHistoryCard = ({ courses, studentId }: { courses: Course[], stud
                         </select>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleSave(record.id)}><Check className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleSave(record)}><Check className="h-4 w-4" /></Button>
                         <Button variant="ghost" size="icon" onClick={handleCancel}><X className="h-4 w-4" /></Button>
                       </TableCell>
                     </>
@@ -272,51 +269,103 @@ const EnrollInCourseCard = ({ courses, onEnroll, studentId }: { courses: Course[
 }
 
 export default function StudentDashboard() {
-  const [students] = usePersistentState<Student[]>('students', initialStudents);
-  const [courses, setCourses] = usePersistentState<Course[]>('courses', initialCourses);
-  const [currentStudentId, setCurrentStudentId] = useState(students[0]?.id || '');
-  const [isClient, setIsClient] = useState(false);
-  
-  const [attendanceRecords, setAttendanceRecords] = usePersistentState<AttendanceRecord[]>('attendanceRecords', initialAttendanceRecords);
+  const { toast } = useToast();
+  const [students, setStudents] = useState<Student[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [currentStudentId, setCurrentStudentId] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const [studentsRes, coursesRes, attendanceRes] = await Promise.all([
+        fetch('/api/students'),
+        fetch('/api/courses'),
+        fetch('/api/attendance'),
+      ]);
+      const [studentsData, coursesData, attendanceData] = await Promise.all([
+        studentsRes.json(),
+        coursesRes.json(),
+        attendanceRes.json(),
+      ]);
 
-  useEffect(() => {
-    if(isClient && !currentStudentId && students.length > 0) {
-        setCurrentStudentId(students[0].id)
+      setStudents(studentsData);
+      setCourses(coursesData);
+      setAttendanceRecords(attendanceData);
+      if (studentsData.length > 0) {
+        setCurrentStudentId(studentsData[0].id);
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error fetching data",
+        description: "Could not load data from the server.",
+      });
+      console.error("Failed to fetch data:", error);
+    } finally {
+      setIsLoading(false);
     }
-  }, [students, currentStudentId, isClient]);
-  
-  const handleEnroll = (courseId: string) => {
-    setCourses(prevCourses => {
-        return prevCourses.map(course => {
-            if (course.id === courseId) {
-                // Ensure studentIds is not duplicated
-                const newStudentIds = new Set([...course.studentIds, currentStudentId]);
-                return { ...course, studentIds: Array.from(newStudentIds) };
-            }
-            return course;
-        });
-    });
   };
 
-  const handleCheckIn = (courseId: string) => {
-    const newRecord: AttendanceRecord = {
-        id: `ar${Date.now()}`,
+  useEffect(() => {
+    fetchData();
+  }, [toast]);
+  
+  const handleEnroll = async (courseId: string) => {
+    try {
+        const response = await fetch(`/api/courses/${courseId}/enroll`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ studentId: currentStudentId }),
+        });
+        if (!response.ok) throw new Error('Failed to enroll');
+        const updatedCourse = await response.json();
+        setCourses(prev => prev.map(c => c.id === courseId ? updatedCourse : c));
+    } catch (error) {
+         toast({ variant: "destructive", title: "Error", description: "Could not enroll in course." });
+    }
+  };
+
+  const handleCheckIn = async (courseId: string) => {
+    const newRecordData = {
         studentId: currentStudentId,
         courseId: courseId,
         date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-        status: 'present'
+        status: 'present' as AttendanceStatus
     };
-    setAttendanceRecords(prev => [...prev, newRecord]);
+    try {
+        const response = await fetch('/api/attendance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newRecordData),
+        });
+        if (!response.ok) throw new Error('Failed to check in');
+        const newRecord = await response.json();
+        setAttendanceRecords(prev => [...prev, newRecord]);
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not record check-in." });
+    }
+  }
+
+  const handleUpdateRecord = async (record: AttendanceRecord) => {
+     try {
+        const response = await fetch(`/api/attendance/${record.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(record),
+        });
+        if (!response.ok) throw new Error('Failed to update record');
+        setAttendanceRecords(prev => prev.map(r => r.id === record.id ? record : r));
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not update attendance record." });
+    }
   }
 
   const currentStudent = students.find(s => s.id === currentStudentId);
 
-  if (!isClient) {
-    return null; // Or a loading spinner
+  if (isLoading) {
+    return <div>Loading...</div>;
   }
 
   return (
@@ -328,9 +377,11 @@ export default function StudentDashboard() {
             <EnrollInCourseCard courses={courses} onEnroll={handleEnroll} studentId={currentStudentId} />
           </div>
           <div className="lg:col-span-2">
-            <AttendanceHistoryCard courses={courses} studentId={currentStudentId} />
+            <AttendanceHistoryCard courses={courses} studentId={currentStudentId} attendanceRecords={attendanceRecords} onUpdateRecord={handleUpdateRecord} />
           </div>
         </div>
       </div>
   );
 }
+
+    
