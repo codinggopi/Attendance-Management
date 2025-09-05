@@ -325,7 +325,7 @@ const CourseManagement = ({ teachers, courses, onAddCourse }: { teachers: Teache
 };
 
 
-const AiReports = ({students}: {students: Student[]}) => {
+const AiReports = ({students, courses}: {students: Student[], courses: Course[]}) => {
     const { toast } = useToast();
     const [predictions, setPredictions] = useState<any[]>([]);
     const [isPredictionsLoading, setIsPredictionsLoading] = useState(false);
@@ -335,7 +335,7 @@ const AiReports = ({students}: {students: Student[]}) => {
 
     useEffect(() => {
         const fetchPredictions = async () => {
-            if (students.length === 0) {
+            if (students.length === 0 || courses.length === 0) {
                 return;
             }
             setIsPredictionsLoading(true);
@@ -374,7 +374,7 @@ const AiReports = ({students}: {students: Student[]}) => {
             }
         };
         fetchPredictions();
-    }, [students, toast]);
+    }, [students, courses, toast]);
 
     const handleGenerateSummary = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -504,9 +504,7 @@ export default function AdminDashboard() {
             onAddCourse={addCourse}
         />
       </div>
-       <AiReports students={students} />
+       <AiReports students={students} courses={courses} />
     </div>
   );
 }
-
-    
