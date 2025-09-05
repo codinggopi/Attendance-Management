@@ -18,6 +18,7 @@ import {
   DialogTrigger,
   DialogClose,
 } from '@/components/ui/dialog';
+import * as api from '@/lib/api';
 
 // This is now a selector, a real app would have a login system.
 const StudentSelector = ({ students, currentStudentId, onStudentChange }: { students: Student[], currentStudentId: string, onStudentChange: (id: string) => void }) => {
@@ -279,15 +280,10 @@ export default function StudentDashboard() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [studentsRes, coursesRes, attendanceRes] = await Promise.all([
-        fetch('/api/students'),
-        fetch('/api/courses'),
-        fetch('/api/attendance'),
-      ]);
       const [studentsData, coursesData, attendanceData] = await Promise.all([
-        studentsRes.json(),
-        coursesRes.json(),
-        attendanceRes.json(),
+        api.getStudents(),
+        api.getCourses(),
+        api.getAttendanceRecords(),
       ]);
 
       setStudents(studentsData);
@@ -310,17 +306,11 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     fetchData();
-  }, [toast]);
+  }, []);
   
   const handleEnroll = async (courseId: string) => {
     try {
-        const response = await fetch(`/api/courses/${courseId}/enroll`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ studentId: currentStudentId }),
-        });
-        if (!response.ok) throw new Error('Failed to enroll');
-        const updatedCourse = await response.json();
+        const updatedCourse = await api.enrollInCourse(courseId, currentStudentId);
         setCourses(prev => prev.map(c => c.id === courseId ? updatedCourse : c));
     } catch (error) {
          toast({ variant: "destructive", title: "Error", description: "Could not enroll in course." });
@@ -335,13 +325,7 @@ export default function StudentDashboard() {
         status: 'present' as AttendanceStatus
     };
     try {
-        const response = await fetch('/api/attendance', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newRecordData),
-        });
-        if (!response.ok) throw new Error('Failed to check in');
-        const newRecord = await response.json();
+        const newRecord = await api.addAttendanceRecord(newRecordData);
         setAttendanceRecords(prev => [...prev, newRecord]);
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not record check-in." });
@@ -350,12 +334,7 @@ export default function StudentDashboard() {
 
   const handleUpdateRecord = async (record: AttendanceRecord) => {
      try {
-        const response = await fetch(`/api/attendance/${record.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(record),
-        });
-        if (!response.ok) throw new Error('Failed to update record');
+        await api.updateAttendanceRecord(record);
         setAttendanceRecords(prev => prev.map(r => r.id === record.id ? record : r));
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not update attendance record." });
@@ -383,5 +362,3 @@ export default function StudentDashboard() {
       </div>
   );
 }
-
-    

@@ -18,7 +18,6 @@ export interface Course {
   name: string;
   teacherId: string;
   studentIds: string[];
-  schedule: string;
 }
 
 export interface AttendanceRecord {
@@ -28,5 +27,3 @@ export interface AttendanceRecord {
   date: string; // YYYY-MM-DD
   status: AttendanceStatus;
 }
-
-    

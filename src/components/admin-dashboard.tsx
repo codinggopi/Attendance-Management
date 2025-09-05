@@ -25,6 +25,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import * as api from '@/lib/api';
 
 // --- Sub-components for Admin Dashboard ---
 
@@ -324,10 +325,9 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteCourse, onDe
         const formData = new FormData(e.target as HTMLFormElement);
         const name = formData.get('name') as string;
         const teacherId = formData.get('teacherId') as string;
-        const scheduleTime = formData.get('scheduleTime') as string;
 
-        if (name && teacherId && scheduleTime) {
-            onAddCourse({ name, teacherId, schedule: scheduleTime });
+        if (name && teacherId) {
+            onAddCourse({ name, teacherId });
             toast({
                 title: "Course Added",
                 description: `${name} has been added.`,
@@ -388,7 +388,6 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteCourse, onDe
                                     <TableRow>
                                         <TableHead>Course Name</TableHead>
                                         <TableHead>Teacher</TableHead>
-                                        <TableHead>Schedule</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -399,7 +398,6 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteCourse, onDe
                                             <TableRow key={course.id}>
                                                 <TableCell>{course.name}</TableCell>
                                                 <TableCell>{teacher?.name || 'N/A'}</TableCell>
-                                                <TableCell>{course.schedule}</TableCell>
                                                 <TableCell className="text-right">
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
@@ -447,10 +445,6 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteCourse, onDe
                                     </SelectContent>
                                 </Select>
                             </div>
-                             <div>
-                                <Label htmlFor="scheduleTime">Schedule Time</Label>
-                                <Input id="scheduleTime" name="scheduleTime" type="time" required />
-                            </div>
                             <Button type="submit" className="w-full">
                                 <PlusCircle className="mr-2 h-4 w-4" /> Add Course
                             </Button>
@@ -481,7 +475,7 @@ const AiReports = ({students, courses}: {students: Student[], courses: Course[]}
             setError(null);
             try {
                 const historicalData = JSON.stringify([{ date: '2023-10-02', status: 'present' }, { date: '2023-10-04', status: 'absent' }]);
-                const scheduleData = JSON.stringify(courses.map(c => ({ name: c.name, schedule: c.schedule })));
+                const scheduleData = JSON.stringify(courses.map(c => ({ name: c.name })));
                 
                 const results = await Promise.all(
                     students.slice(0, 5).map(student => 
@@ -590,17 +584,11 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-        const [studentsRes, teachersRes, coursesRes, attendanceRes] = await Promise.all([
-            fetch('/api/students'),
-            fetch('/api/teachers'),
-            fetch('/api/courses'),
-            fetch('/api/attendance'),
-        ]);
         const [studentsData, teachersData, coursesData, attendanceData] = await Promise.all([
-            studentsRes.json(),
-            teachersRes.json(),
-            coursesRes.json(),
-            attendanceRes.json(),
+            api.getStudents(),
+            api.getTeachers(),
+            api.getCourses(),
+            api.getAttendanceRecords(),
         ]);
         setStudents(studentsData);
         setTeachers(teachersData);
@@ -620,18 +608,12 @@ export default function AdminDashboard() {
   
   useEffect(() => {
     fetchData();
-  }, [toast]);
+  }, []);
 
 
   const addStudent = async (studentData: Omit<Student, 'id'>) => {
     try {
-        const response = await fetch('/api/students', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(studentData),
-        });
-        if (!response.ok) throw new Error('Failed to add student');
-        const newStudent = await response.json();
+        const newStudent = await api.addStudent(studentData);
         setStudents(prev => [...prev, newStudent]);
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not add student." });
@@ -640,13 +622,7 @@ export default function AdminDashboard() {
 
   const addTeacher = async (teacherData: Omit<Teacher, 'id'>) => {
     try {
-        const response = await fetch('/api/teachers', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(teacherData),
-        });
-        if (!response.ok) throw new Error('Failed to add teacher');
-        const newTeacher = await response.json();
+        const newTeacher = await api.addTeacher(teacherData);
         setTeachers(prev => [...prev, newTeacher]);
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not add teacher." });
@@ -655,13 +631,7 @@ export default function AdminDashboard() {
 
   const addCourse = async (courseData: Omit<Course, 'id' | 'studentIds'>) => {
     try {
-        const response = await fetch('/api/courses', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(courseData),
-        });
-        if (!response.ok) throw new Error('Failed to add course');
-        const newCourse = await response.json();
+        const newCourse = await api.addCourse(courseData);
         setCourses(prev => [...prev, newCourse]);
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not add course." });
@@ -670,12 +640,7 @@ export default function AdminDashboard() {
 
   const updateStudent = async (updatedStudent: Student) => {
     try {
-        const response = await fetch(`/api/students/${updatedStudent.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatedStudent),
-        });
-        if (!response.ok) throw new Error('Failed to update student');
+        await api.updateStudent(updatedStudent);
         setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not update student." });
@@ -684,12 +649,7 @@ export default function AdminDashboard() {
 
   const updateTeacher = async (updatedTeacher: Teacher) => {
     try {
-        const response = await fetch(`/api/teachers/${updatedTeacher.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatedTeacher),
-        });
-        if (!response.ok) throw new Error('Failed to update teacher');
+        await api.updateTeacher(updatedTeacher);
         setTeachers(prev => prev.map(t => t.id === updatedTeacher.id ? updatedTeacher : t));
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not update teacher." });
@@ -698,8 +658,7 @@ export default function AdminDashboard() {
 
   const deleteStudent = async (studentId: string) => {
     try {
-        const response = await fetch(`/api/students/${studentId}`, { method: 'DELETE' });
-        if (!response.ok) throw new Error('Failed to delete student');
+        await api.deleteStudent(studentId);
         setStudents(prev => prev.filter(s => s.id !== studentId));
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not delete student." });
@@ -708,8 +667,7 @@ export default function AdminDashboard() {
 
   const deleteTeacher = async (teacherId: string) => {
     try {
-        const response = await fetch(`/api/teachers/${teacherId}`, { method: 'DELETE' });
-        if (!response.ok) throw new Error('Failed to delete teacher');
+        await api.deleteTeacher(teacherId);
         setTeachers(prev => prev.filter(t => t.id !== teacherId));
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not delete teacher." });
@@ -718,8 +676,7 @@ export default function AdminDashboard() {
 
   const deleteCourse = async (courseId: string) => {
     try {
-        const response = await fetch(`/api/courses/${courseId}`, { method: 'DELETE' });
-        if (!response.ok) throw new Error('Failed to delete course');
+        await api.deleteCourse(courseId);
         setCourses(prev => prev.filter(c => c.id !== courseId));
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not delete course." });
@@ -728,8 +685,7 @@ export default function AdminDashboard() {
   
   const deleteAllUsers = async () => {
     try {
-        const response = await fetch('/api/users/all', { method: 'DELETE' });
-        if (!response.ok) throw new Error('Failed to delete all users');
+        await api.deleteAllUsers();
         setStudents([]);
         setTeachers([]);
         setAttendanceRecords([]); 
@@ -740,8 +696,7 @@ export default function AdminDashboard() {
   
   const deleteAllCourses = async () => {
     try {
-        const response = await fetch('/api/courses/all', { method: 'DELETE' });
-        if (!response.ok) throw new Error('Failed to delete all courses');
+        await api.deleteAllCourses();
         setCourses([]);
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not delete all courses." });
@@ -784,5 +739,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
-    

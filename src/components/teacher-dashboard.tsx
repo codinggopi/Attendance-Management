@@ -23,6 +23,7 @@ import {
   DialogTrigger,
   DialogClose,
 } from '@/components/ui/dialog';
+import * as api from '@/lib/api';
 
 // Mock current teacher
 const TeacherSelector = ({ teachers, currentTeacherId, onTeacherChange }: { teachers: Teacher[], currentTeacherId: string, onTeacherChange: (id: string) => void }) => {
@@ -350,15 +351,10 @@ export default function TeacherDashboard() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [studentsRes, teachersRes, coursesRes] = await Promise.all([
-        fetch('/api/students'),
-        fetch('/api/teachers'),
-        fetch('/api/courses'),
-      ]);
       const [studentsData, teachersData, coursesData] = await Promise.all([
-        studentsRes.json(),
-        teachersRes.json(),
-        coursesRes.json(),
+        api.getStudents(),
+        api.getTeachers(),
+        api.getCourses(),
       ]);
 
       setAllStudents(studentsData);
@@ -381,18 +377,12 @@ export default function TeacherDashboard() {
 
   useEffect(() => {
     fetchData();
-  }, [toast]);
+  }, []);
   
 
   const handleAddStudent = async (studentData: Omit<Student, 'id'>) => {
     try {
-        const response = await fetch('/api/students', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(studentData),
-        });
-        if (!response.ok) throw new Error('Failed to add student');
-        const newStudent = await response.json();
+        const newStudent = await api.addStudent(studentData);
         setAllStudents(prev => [...prev, newStudent]);
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not add student." });
@@ -404,12 +394,7 @@ export default function TeacherDashboard() {
     if (!course) return;
     const updatedCourse = { ...course, name };
      try {
-        const response = await fetch(`/api/courses/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatedCourse),
-        });
-        if (!response.ok) throw new Error('Failed to update course');
+        await api.updateCourse(updatedCourse);
         setCourses(prev => prev.map(c => c.id === id ? updatedCourse : c));
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not update course." });
@@ -427,12 +412,7 @@ export default function TeacherDashboard() {
         }));
     
     try {
-        const response = await fetch('/api/attendance/bulk', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(records),
-        });
-        if (!response.ok) throw new Error('Failed to save attendance');
+        await api.addBulkAttendanceRecords(records);
         // Optionally refetch attendance data here or update state optimistically
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not save attendance." });
@@ -471,5 +451,3 @@ export default function TeacherDashboard() {
     </div>
   );
 }
-
-    
