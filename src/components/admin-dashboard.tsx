@@ -75,7 +75,7 @@ const StatsCards = ({ studentCount, teacherCount, courseCount, attendanceRecords
     );
 };
 
-const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpdateStudent, onUpdateTeacher, onDeleteAll }: { students: Student[], teachers: Teacher[], onAddStudent: (student: Omit<Student, 'id'>) => void, onAddTeacher: (teacher: Omit<Teacher, 'id'>) => void, onUpdateStudent: (student: Student) => void, onUpdateTeacher: (teacher: Teacher) => void, onDeleteAll: () => void }) => {
+const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpdateStudent, onUpdateTeacher, onDeleteStudent, onDeleteTeacher, onDeleteAll }: { students: Student[], teachers: Teacher[], onAddStudent: (student: Omit<Student, 'id'>) => void, onAddTeacher: (teacher: Omit<Teacher, 'id'>) => void, onUpdateStudent: (student: Student) => void, onUpdateTeacher: (teacher: Teacher) => void, onDeleteStudent: (id: string) => void, onDeleteTeacher: (id: string) => void, onDeleteAll: () => void }) => {
     const { toast } = useToast();
     const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
     const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null);
@@ -131,6 +131,11 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
         setEditingStudentId(null);
         setEditedStudent({});
     };
+    
+    const handleDeleteStudentClick = (studentId: string) => {
+        onDeleteStudent(studentId);
+        toast({ title: "Student Deleted", description: "The student has been removed." });
+    }
 
     const handleEditTeacher = (teacher: Teacher) => {
         setEditingTeacherId(teacher.id);
@@ -148,6 +153,11 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
         setEditingTeacherId(null);
         setEditedTeacher({});
     };
+
+    const handleDeleteTeacherClick = (teacherId: string) => {
+        onDeleteTeacher(teacherId);
+        toast({ title: "Teacher Deleted", description: "The teacher has been removed." });
+    }
     
     const handleDeleteAllClick = () => {
         onDeleteAll();
@@ -213,7 +223,26 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
                                                 <>
                                                     <TableCell>{t.name}</TableCell>
                                                     <TableCell>{t.email}</TableCell>
-                                                    <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleEditTeacher(t)}><Pencil className="h-4 w-4" /></Button></TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Button variant="ghost" size="icon" onClick={() => handleEditTeacher(t)}><Pencil className="h-4 w-4" /></Button>
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Delete Teacher?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        Are you sure you want to delete {t.name}? This action cannot be undone.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => handleDeleteTeacherClick(t.id)}>Delete</AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </TableCell>
                                                 </>
                                             )}
                                         </TableRow>
@@ -245,7 +274,26 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
                                                     <TableCell>{s.name}</TableCell>
                                                     <TableCell>{s.dept}</TableCell>
                                                     <TableCell>{s.email}</TableCell>
-                                                    <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleEditStudent(s)}><Pencil className="h-4 w-4" /></Button></TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Button variant="ghost" size="icon" onClick={() => handleEditStudent(s)}><Pencil className="h-4 w-4" /></Button>
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Delete Student?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        Are you sure you want to delete {s.name}? This action cannot be undone.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => handleDeleteStudentClick(s.id)}>Delete</AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </TableCell>
                                                 </>
                                             )}
                                         </TableRow>
@@ -270,7 +318,7 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
     );
 };
 
-const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteAll }: { teachers: Teacher[], courses: Course[], onAddCourse: (course: Omit<Course, 'id' | 'studentIds'>) => void, onDeleteAll: () => void }) => {
+const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteCourse, onDeleteAll }: { teachers: Teacher[], courses: Course[], onAddCourse: (course: Omit<Course, 'id' | 'studentIds'>) => void, onDeleteCourse: (id: string) => void, onDeleteAll: () => void }) => {
     const { toast } = useToast();
 
     const handleAddCourse = (e: React.FormEvent) => {
@@ -289,6 +337,11 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteAll }: { tea
         }
     };
     
+    const handleDeleteCourseClick = (courseId: string) => {
+        onDeleteCourse(courseId);
+        toast({ title: "Course Deleted", description: "The course has been removed." });
+    }
+
     const handleDeleteAllClick = () => {
         onDeleteAll();
         toast({
@@ -336,6 +389,7 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteAll }: { tea
                                     <TableRow>
                                         <TableHead>Course Name</TableHead>
                                         <TableHead>Teacher</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -345,6 +399,25 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteAll }: { tea
                                             <TableRow key={course.id}>
                                                 <TableCell>{course.name}</TableCell>
                                                 <TableCell>{teacher?.name || 'N/A'}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Delete Course?</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    Are you sure you want to delete the course "{course.name}"? This action cannot be undone.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDeleteCourseClick(course.id)}>Delete</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </TableCell>
                                             </TableRow>
                                         );
                                     })}
@@ -544,6 +617,18 @@ export default function AdminDashboard() {
   const updateTeacher = (updatedTeacher: Teacher) => {
     setTeachers(prev => prev.map(t => t.id === updatedTeacher.id ? updatedTeacher : t));
   };
+
+  const deleteStudent = (studentId: string) => {
+    setStudents(prev => prev.filter(s => s.id !== studentId));
+  };
+
+  const deleteTeacher = (teacherId: string) => {
+    setTeachers(prev => prev.filter(t => t.id !== teacherId));
+  };
+
+  const deleteCourse = (courseId: string) => {
+    setCourses(prev => prev.filter(c => c.id !== courseId));
+  };
   
   const deleteAllUsers = () => {
     setStudents([]);
@@ -575,12 +660,15 @@ export default function AdminDashboard() {
           onAddTeacher={addTeacher}
           onUpdateStudent={updateStudent}
           onUpdateTeacher={updateTeacher}
+          onDeleteStudent={deleteStudent}
+          onDeleteTeacher={deleteTeacher}
           onDeleteAll={deleteAllUsers}
         />
         <CourseManagement 
             teachers={teachers}
             courses={courses}
             onAddCourse={addCourse}
+            onDeleteCourse={deleteCourse}
             onDeleteAll={deleteAllCourses}
         />
       </div>
