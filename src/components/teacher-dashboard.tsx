@@ -11,9 +11,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BrainCircuit, UserPlus, ListChecks, CheckCircle, AlertCircle, XCircle, Clock, Pencil, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { courses as initialCourses, students as initialStudents, teachers } from '@/lib/data';
-import type { Course, Student, AttendanceStatus } from '@/lib/types';
+import { courses as initialCourses, students as initialStudents, teachers as initialTeachers } from '@/lib/data';
+import type { Course, Student, AttendanceStatus, Teacher } from '@/lib/types';
 import { predictStudentAbsence } from '@/ai/flows/predict-student-absence';
+import { usePersistentState } from '@/hooks/use-persistent-state';
 import {
   Dialog,
   DialogContent,
@@ -26,15 +27,39 @@ import {
 } from '@/components/ui/dialog';
 
 // Mock current teacher
-const currentTeacher = teachers[0];
+const TeacherSelector = ({ teachers, currentTeacherId, onTeacherChange }: { teachers: Teacher[], currentTeacherId: string, onTeacherChange: (id: string) => void }) => {
+    return (
+        <div className="mb-4">
+            <label htmlFor="teacher-selector" className="block text-sm font-medium text-gray-700 mb-1">Select Teacher:</label>
+            <select
+                id="teacher-selector"
+                value={currentTeacherId}
+                onChange={(e) => onTeacherChange(e.target.value)}
+                className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+            >
+                {teachers.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+            </select>
+        </div>
+    )
+}
 
-const AttendanceTaker = ({ allStudents }: { allStudents: Student[] }) => {
+const AttendanceTaker = ({ allStudents, teacherId }: { allStudents: Student[], teacherId: string }) => {
   const { toast } = useToast();
-  const [courses, setCourses] = useState(initialCourses.filter(c => c.teacherId === currentTeacher.id));
-  const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>(courses[0]?.id);
+  const [courses, setCourses] = usePersistentState<Course[]>('courses', initialCourses);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>(undefined);
   const [studentsInCourse, setStudentsInCourse] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({});
   const [editedCourseName, setEditedCourseName] = useState("");
+
+  const teacherCourses = courses.filter(c => c.teacherId === teacherId);
+
+  useEffect(() => {
+    if (teacherCourses.length > 0 && !selectedCourseId) {
+        setSelectedCourseId(teacherCourses[0].id);
+    }
+  }, [teacherId, teacherCourses, selectedCourseId])
 
   useEffect(() => {
     if (selectedCourseId) {
@@ -48,6 +73,10 @@ const AttendanceTaker = ({ allStudents }: { allStudents: Student[] }) => {
         studentIds.forEach(id => { initialAttendance[id] = 'unmarked' });
         setAttendance(initialAttendance);
       }
+    } else {
+        setStudentsInCourse([]);
+        setAttendance({});
+        setEditedCourseName("");
     }
   }, [selectedCourseId, courses, allStudents]);
 
@@ -79,7 +108,7 @@ const AttendanceTaker = ({ allStudents }: { allStudents: Student[] }) => {
             </div>
             <Dialog>
               <DialogTrigger asChild>
-                <Button variant="outline"><Pencil className="mr-2 h-4 w-4" /> Edit Course</Button>
+                <Button variant="outline" disabled={!selectedCourseId}><Pencil className="mr-2 h-4 w-4" /> Edit Course</Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
@@ -106,14 +135,14 @@ const AttendanceTaker = ({ allStudents }: { allStudents: Student[] }) => {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Select onValueChange={setSelectedCourseId} defaultValue={selectedCourseId}>
+        <Select onValueChange={setSelectedCourseId} value={selectedCourseId}>
           <SelectTrigger>
             <SelectValue placeholder="Select a course..." />
           </SelectTrigger>
           <SelectContent>
-            {courses.map(course => (
+            {teacherCourses.length > 0 ? teacherCourses.map(course => (
               <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
-            ))}
+            )) : <SelectItem value="none" disabled>No courses found for this teacher.</SelectItem>}
           </SelectContent>
         </Select>
 
@@ -126,7 +155,7 @@ const AttendanceTaker = ({ allStudents }: { allStudents: Student[] }) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {studentsInCourse.map(student => (
+              {studentsInCourse.length > 0 ? studentsInCourse.map(student => (
                 <TableRow key={student.id}>
                   <TableCell>{student.name}</TableCell>
                   <TableCell className="text-right">
@@ -151,11 +180,17 @@ const AttendanceTaker = ({ allStudents }: { allStudents: Student[] }) => {
                     </RadioGroup>
                   </TableCell>
                 </TableRow>
-              ))}
+              )) : (
+                  <TableRow>
+                    <TableCell colSpan={2} className="h-24 text-center">
+                        Select a course to see students.
+                    </TableCell>
+                  </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
-        <Button onClick={handleSubmit} className="w-full">Submit Attendance</Button>
+        <Button onClick={handleSubmit} className="w-full" disabled={studentsInCourse.length === 0}>Submit Attendance</Button>
       </CardContent>
     </Card>
   );
@@ -207,27 +242,26 @@ const RosterManagement = ({ onAddStudent }: { onAddStudent: (student: Omit<Stude
   );
 };
 
-const AIPredictions = ({ allStudents }: { allStudents: Student[] }) => {
+const AIPredictions = ({ allStudents, courses }: { allStudents: Student[], courses: Course[] }) => {
   const { toast } = useToast();
   const [predictions, setPredictions] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPredictions = async () => {
       if (allStudents.length === 0) {
-        setIsLoading(false);
         return;
       }
       setIsLoading(true);
       setError(null);
       try {
-        const studentsToPredict = allStudents.slice(0, 3); // Predict for a few students
+        const studentsToPredict = allStudents.slice(0, 3);
         const historicalData = JSON.stringify([
             { date: '2023-10-02', status: 'present' },
             { date: '2023-10-04', status: 'absent' },
         ]);
-        const scheduleData = JSON.stringify(initialCourses.map(c => ({ name: c.name, schedule: c.schedule })));
+        const scheduleData = JSON.stringify(courses.map(c => ({ name: c.name, schedule: c.schedule })));
         
         const predictionPromises = studentsToPredict.map(student => 
           predictStudentAbsence({
@@ -237,12 +271,12 @@ const AIPredictions = ({ allStudents }: { allStudents: Student[] }) => {
           }).then(result => ({ ...result, studentName: student.name }))
           .catch(e => {
             console.error(`Failed to get prediction for student ${student.id}:`, e);
-            return null; // Return null on failure for this specific student
+            return null;
           })
         );
         
         const results = await Promise.all(predictionPromises);
-        const validResults = results.filter(p => p && p.willBeAbsent);
+        const validResults = results.filter((p): p is (NonNullable<typeof p>) => p !== null && p.willBeAbsent);
         setPredictions(validResults);
         if (results.some(r => r === null)) {
             setError("Could not fetch all predictions. The AI model might be temporarily unavailable.");
@@ -262,7 +296,7 @@ const AIPredictions = ({ allStudents }: { allStudents: Student[] }) => {
     };
 
     fetchPredictions();
-  }, [toast, allStudents]);
+  }, [toast, allStudents, courses]);
   
   const getIcon = (confidence: number) => {
     if (confidence > 0.75) return <AlertCircle className="h-5 w-5 text-red-500" />;
@@ -298,8 +332,9 @@ const AIPredictions = ({ allStudents }: { allStudents: Student[] }) => {
             ))}
           </ul>
         ) : (
-          <div className="text-center text-muted-foreground">No absence predictions at this time or the prediction service is unavailable.</div>
+          <div className="text-center text-muted-foreground">No absence predictions at this time.</div>
         )}
+        {error && !isLoading && <div className="text-destructive mt-2">{error}</div>}
       </CardContent>
     </Card>
   );
@@ -307,7 +342,16 @@ const AIPredictions = ({ allStudents }: { allStudents: Student[] }) => {
 
 
 export default function TeacherDashboard() {
-  const [allStudents, setAllStudents] = useState<Student[]>(initialStudents);
+  const [allStudents, setAllStudents] = usePersistentState<Student[]>('students', initialStudents);
+  const [teachers] = usePersistentState<Teacher[]>('teachers', initialTeachers);
+  const [courses] = usePersistentState<Course[]>('courses', initialCourses);
+  const [currentTeacherId, setCurrentTeacherId] = useState(teachers[0]?.id || '');
+  
+  useEffect(() => {
+    if(!currentTeacherId && teachers.length > 0) {
+        setCurrentTeacherId(teachers[0].id)
+    }
+  }, [teachers, currentTeacherId]);
 
   const handleAddStudent = (studentData: Omit<Student, 'id'>) => {
       const newStudent: Student = {
@@ -318,21 +362,24 @@ export default function TeacherDashboard() {
   };
 
   return (
-    <Tabs defaultValue="attendance">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="attendance"><ListChecks className="mr-2 h-4 w-4" />Take Attendance</TabsTrigger>
-        <TabsTrigger value="roster"><UserPlus className="mr-2 h-4 w-4" />Manage Students</TabsTrigger>
-        <TabsTrigger value="ai"><BrainCircuit className="mr-2 h-4 w-4" />AI Insights</TabsTrigger>
-      </TabsList>
-      <TabsContent value="attendance" className="mt-6">
-        <AttendanceTaker allStudents={allStudents} />
-      </TabsContent>
-      <TabsContent value="roster" className="mt-6">
-        <RosterManagement onAddStudent={handleAddStudent} />
-      </TabsContent>
-      <TabsContent value="ai" className="mt-6">
-        <AIPredictions allStudents={allStudents} />
-      </TabsContent>
-    </Tabs>
+    <div>
+        <TeacherSelector teachers={teachers} currentTeacherId={currentTeacherId} onTeacherChange={setCurrentTeacherId} />
+        <Tabs defaultValue="attendance">
+        <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="attendance"><ListChecks className="mr-2 h-4 w-4" />Take Attendance</TabsTrigger>
+            <TabsTrigger value="roster"><UserPlus className="mr-2 h-4 w-4" />Manage Students</TabsTrigger>
+            <TabsTrigger value="ai"><BrainCircuit className="mr-2 h-4 w-4" />AI Insights</TabsTrigger>
+        </TabsList>
+        <TabsContent value="attendance" className="mt-6">
+            <AttendanceTaker allStudents={allStudents} teacherId={currentTeacherId} />
+        </TabsContent>
+        <TabsContent value="roster" className="mt-6">
+            <RosterManagement onAddStudent={handleAddStudent} />
+        </TabsContent>
+        <TabsContent value="ai" className="mt-6">
+            <AIPredictions allStudents={allStudents} courses={courses} />
+        </TabsContent>
+        </Tabs>
+    </div>
   );
 }

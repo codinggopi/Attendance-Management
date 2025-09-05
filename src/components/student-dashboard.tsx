@@ -5,10 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CheckCircle, XCircle, Clock, CalendarDays, AlertCircle, Pencil, PlusCircle, BookOpen } from "lucide-react";
+import { CheckCircle, XCircle, Clock, CalendarDays, AlertCircle, Pencil, PlusCircle, BookOpen, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { students, courses as initialCourses, attendanceRecords as initialAttendanceRecords, getCurrentCourseForStudent } from '@/lib/data';
+import { students as initialStudents, courses as initialCourses, attendanceRecords as initialAttendanceRecords, getCurrentCourseForStudent } from '@/lib/data';
 import type { AttendanceRecord, AttendanceStatus, Course, Student } from '@/lib/types';
+import { usePersistentState } from '@/hooks/use-persistent-state';
 import {
   Dialog,
   DialogContent,
@@ -20,10 +21,27 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 
-// Mock current student
-const currentStudent: Student = students[0];
+// This is now a selector, a real app would have a login system.
+const StudentSelector = ({ students, currentStudentId, onStudentChange }: { students: Student[], currentStudentId: string, onStudentChange: (id: string) => void }) => {
+    if (students.length === 0) return null;
+    return (
+        <div className="mb-4">
+            <label htmlFor="student-selector" className="block text-sm font-medium text-gray-700 mb-1">Select Student:</label>
+            <select
+                id="student-selector"
+                value={currentStudentId}
+                onChange={(e) => onStudentChange(e.target.value)}
+                className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+            >
+                {students.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+            </select>
+        </div>
+    )
+}
 
-const SelfCheckInCard = ({ courses }: { courses: Course[] }) => {
+const SelfCheckInCard = ({ courses, student }: { courses: Course[], student?: Student }) => {
   const { toast } = useToast();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [currentCourse, setCurrentCourse] = useState<Course | undefined>(undefined);
@@ -35,18 +53,19 @@ const SelfCheckInCard = ({ courses }: { courses: Course[] }) => {
   }, []);
 
   useEffect(() => {
-    // This logic needs to be aware of the student's current enrollments
+    if (!student) return;
     const findCourse = () => {
         const day = currentTime.getDay();
         return courses.find(c => {
-            if (!c.studentIds.includes(currentStudent.id)) return false;
+            if (!c.studentIds.includes(student.id)) return false;
             if (c.schedule.includes("MWF") && (day === 1 || day === 3 || day === 5)) return true;
             if (c.schedule.includes("TTh") && (day === 2 || day === 4)) return true;
             return false;
         });
     }
     setCurrentCourse(findCourse());
-  }, [currentTime, courses]);
+    setIsCheckedIn(false); 
+  }, [currentTime, courses, student]);
 
   const handleCheckIn = () => {
     setIsCheckedIn(true);
@@ -96,11 +115,16 @@ const SelfCheckInCard = ({ courses }: { courses: Course[] }) => {
   );
 };
 
-const AttendanceHistoryCard = ({ courses }: { courses: Course[] }) => {
+const AttendanceHistoryCard = ({ courses, studentId }: { courses: Course[], studentId: string }) => {
   const { toast } = useToast();
-  const [attendanceRecords, setAttendanceRecords] = useState(initialAttendanceRecords.filter(r => r.studentId === currentStudent.id));
+  const [attendanceRecords, setAttendanceRecords] = usePersistentState<AttendanceRecord[]>(`attendance_records_${studentId}`, initialAttendanceRecords.filter(r => r.studentId === studentId));
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [editedStatus, setEditedStatus] = useState<AttendanceStatus>('present');
+
+  useEffect(() => {
+    setAttendanceRecords(initialAttendanceRecords.filter(r => r.studentId === studentId))
+  }, [studentId, setAttendanceRecords]);
+  
 
   const handleEdit = (record: AttendanceRecord) => {
     setEditingRecordId(record.id);
@@ -111,6 +135,10 @@ const AttendanceHistoryCard = ({ courses }: { courses: Course[] }) => {
     setAttendanceRecords(prev => prev.map(r => r.id === recordId ? { ...r, status: editedStatus } : r));
     setEditingRecordId(null);
     toast({ title: "Record updated" });
+  }
+
+  const handleCancel = () => {
+    setEditingRecordId(null);
   }
 
   const getStatusBadge = (status: AttendanceStatus) => {
@@ -150,30 +178,32 @@ const AttendanceHistoryCard = ({ courses }: { courses: Course[] }) => {
               const course = courses.find(c => c.id === record.courseId);
               return (
                 <TableRow key={record.id}>
-                  <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
-                  <TableCell>{course?.name || 'Unknown Course'}</TableCell>
-                  <TableCell>{getStatusBadge(record.status)}</TableCell>
-                  <TableCell className="text-right">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(record)}><Pencil className="h-4 w-4" /></Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Edit Attendance Record</DialogTitle>
-                        <DialogDescription>
-                          Update the status for this attendance record. This is for demonstration, students would typically not be able to edit this.
-                        </DialogDescription>
-                      </DialogHeader>
-                      {/* Form to edit would go here */}
-                      <DialogFooter>
-                        <DialogClose asChild>
-                          <Button type="button" onClick={() => handleSave(record.id)}>Save changes</Button>
-                        </DialogClose>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                  </TableCell>
+                  {editingRecordId === record.id ? (
+                    <>
+                      <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
+                      <TableCell>{course?.name || 'Unknown Course'}</TableCell>
+                      <TableCell>
+                         <select value={editedStatus} onChange={(e) => setEditedStatus(e.target.value as AttendanceStatus)}>
+                            <option value="present">Present</option>
+                            <option value="absent">Absent</option>
+                            <option value="late">Late</option>
+                        </select>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => handleSave(record.id)}><Check className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={handleCancel}><X className="h-4 w-4" /></Button>
+                      </TableCell>
+                    </>
+                  ) : (
+                    <>
+                      <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
+                      <TableCell>{course?.name || 'Unknown Course'}</TableCell>
+                      <TableCell>{getStatusBadge(record.status)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(record)}><Pencil className="h-4 w-4" /></Button>
+                      </TableCell>
+                    </>
+                  )}
                 </TableRow>
               );
             }) : (
@@ -188,8 +218,8 @@ const AttendanceHistoryCard = ({ courses }: { courses: Course[] }) => {
   );
 };
 
-const EnrollInCourseCard = ({ courses, onEnroll }: { courses: Course[], onEnroll: (courseId: string) => void }) => {
-    const availableCourses = courses.filter(c => !c.studentIds.includes(currentStudent.id));
+const EnrollInCourseCard = ({ courses, onEnroll, studentId }: { courses: Course[], onEnroll: (courseId: string) => void, studentId: string }) => {
+    const availableCourses = courses.filter(c => !c.studentIds.includes(studentId));
     const { toast } = useToast();
 
     const handleEnroll = (courseId: string, courseName: string) => {
@@ -235,30 +265,44 @@ const EnrollInCourseCard = ({ courses, onEnroll }: { courses: Course[], onEnroll
 }
 
 export default function StudentDashboard() {
-  const [courses, setCourses] = useState<Course[]>(initialCourses);
+  const [students] = usePersistentState<Student[]>('students', initialStudents);
+  const [courses, setCourses] = usePersistentState<Course[]>('courses', initialCourses);
+  const [currentStudentId, setCurrentStudentId] = useState(students[0]?.id || '');
+
+  useEffect(() => {
+    if(!currentStudentId && students.length > 0) {
+        setCurrentStudentId(students[0].id)
+    }
+  }, [students, currentStudentId]);
   
   const handleEnroll = (courseId: string) => {
     setCourses(prevCourses => {
         return prevCourses.map(course => {
             if (course.id === courseId) {
-                return { ...course, studentIds: [...course.studentIds, currentStudent.id] };
+                // Ensure studentIds is not duplicated
+                const newStudentIds = new Set([...course.studentIds, currentStudentId]);
+                return { ...course, studentIds: Array.from(newStudentIds) };
             }
             return course;
         });
     });
   };
 
-  const enrolledCourses = courses.filter(c => c.studentIds.includes(currentStudent.id));
+  const currentStudent = students.find(s => s.id === currentStudentId);
+  const enrolledCourses = courses.filter(c => c.studentIds.includes(currentStudentId));
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-      <div className="lg:col-span-1 flex flex-col gap-6">
-        <SelfCheckInCard courses={courses}/>
-        <EnrollInCourseCard courses={courses} onEnroll={handleEnroll} />
+      <div>
+        <StudentSelector students={students} currentStudentId={currentStudentId} onStudentChange={setCurrentStudentId} />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div className="lg:col-span-1 flex flex-col gap-6">
+            <SelfCheckInCard courses={courses} student={currentStudent}/>
+            <EnrollInCourseCard courses={courses} onEnroll={handleEnroll} studentId={currentStudentId} />
+          </div>
+          <div className="lg:col-span-2">
+            <AttendanceHistoryCard courses={enrolledCourses} studentId={currentStudentId} />
+          </div>
+        </div>
       </div>
-      <div className="lg:col-span-2">
-        <AttendanceHistoryCard courses={enrolledCourses} />
-      </div>
-    </div>
   );
 }

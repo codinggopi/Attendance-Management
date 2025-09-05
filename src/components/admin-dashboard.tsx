@@ -15,6 +15,7 @@ import type { Student, Teacher } from '@/lib/types';
 import { predictStudentAbsence } from '@/ai/flows/predict-student-absence';
 import { generateAttendanceSummary } from '@/ai/flows/generate-attendance-summary';
 import jsPDF from 'jspdf';
+import { usePersistentState } from '@/hooks/use-persistent-state';
 
 // --- Sub-components for Admin Dashboard ---
 
@@ -54,7 +55,7 @@ const StatsCards = ({ studentCount, teacherCount }: { studentCount: number, teac
     );
 };
 
-const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpdateStudent, onUpdateTeacher }: { students: Student[], teachers: Teacher[], onAddStudent: (student: Student) => void, onAddTeacher: (teacher: Teacher) => void, onUpdateStudent: (student: Student) => void, onUpdateTeacher: (teacher: Teacher) => void }) => {
+const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpdateStudent, onUpdateTeacher }: { students: Student[], teachers: Teacher[], onAddStudent: (student: Omit<Student, 'id'>) => void, onAddTeacher: (teacher: Omit<Teacher, 'id'>) => void, onUpdateStudent: (student: Student) => void, onUpdateTeacher: (teacher: Teacher) => void }) => {
     const { toast } = useToast();
     const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
     const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null);
@@ -67,18 +68,15 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
         const name = formData.get('name') as string;
         const email = formData.get('email') as string;
         const grade = Number(formData.get('grade'));
-        const newStudent: Student = {
-            id: `s${Date.now()}`,
-            name,
-            email,
-            grade
-        };
-        onAddStudent(newStudent);
-        toast({
-            title: "Student Added",
-            description: `${name} has been added to the system.`,
-        });
-        (e.target as HTMLFormElement).reset();
+        
+        if (name && email && grade) {
+            onAddStudent({ name, email, grade });
+            toast({
+                title: "Student Added",
+                description: `${name} has been added to the system.`,
+            });
+            (e.target as HTMLFormElement).reset();
+        }
     };
 
     const handleAddTeacher = (e: React.FormEvent) => {
@@ -86,17 +84,15 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
         const formData = new FormData(e.target as HTMLFormElement);
         const name = formData.get('name') as string;
         const email = formData.get('email') as string;
-        const newTeacher: Teacher = {
-            id: `t${Date.now()}`,
-            name,
-            email,
-        };
-        onAddTeacher(newTeacher);
-        toast({
-            title: "Teacher Added",
-            description: `${name} has been added to the system.`,
-        });
-        (e.target as HTMLFormElement).reset();
+
+        if (name && email) {
+            onAddTeacher({ name, email });
+            toast({
+                title: "Teacher Added",
+                description: `${name} has been added to the system.`,
+            });
+            (e.target as HTMLFormElement).reset();
+        }
     };
 
     const handleEditStudent = (student: Student) => {
@@ -104,11 +100,16 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
         setEditedStudent(student);
     };
 
-    const handleSaveStudent = (id: string) => {
+    const handleSaveStudent = () => {
         onUpdateStudent(editedStudent as Student);
         setEditingStudentId(null);
         setEditedStudent({});
         toast({ title: "Student Updated", description: "Student information has been saved." });
+    };
+
+    const handleCancelEditStudent = () => {
+        setEditingStudentId(null);
+        setEditedStudent({});
     };
 
     const handleEditTeacher = (teacher: Teacher) => {
@@ -116,11 +117,16 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
         setEditedTeacher(teacher);
     };
 
-    const handleSaveTeacher = (id: string) => {
+    const handleSaveTeacher = () => {
         onUpdateTeacher(editedTeacher as Teacher);
         setEditingTeacherId(null);
         setEditedTeacher({});
         toast({ title: "Teacher Updated", description: "Teacher information has been saved." });
+    };
+
+    const handleCancelEditTeacher = () => {
+        setEditingTeacherId(null);
+        setEditedTeacher({});
     };
 
     return (
@@ -151,8 +157,8 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
                                                     <TableCell><Input value={editedTeacher.name} onChange={e => setEditedTeacher({ ...editedTeacher, name: e.target.value })} /></TableCell>
                                                     <TableCell><Input type="email" value={editedTeacher.email} onChange={e => setEditedTeacher({ ...editedTeacher, email: e.target.value })} /></TableCell>
                                                     <TableCell className="text-right">
-                                                        <Button variant="ghost" size="icon" onClick={() => handleSaveTeacher(t.id)}><Check className="h-4 w-4" /></Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => setEditingTeacherId(null)}><X className="h-4 w-4" /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleSaveTeacher()}><Check className="h-4 w-4" /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleCancelEditTeacher()}><X className="h-4 w-4" /></Button>
                                                     </TableCell>
                                                 </>
                                             ) : (
@@ -182,8 +188,8 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
                                                     <TableCell><Input type="number" value={editedStudent.grade} onChange={e => setEditedStudent({ ...editedStudent, grade: Number(e.target.value) })} /></TableCell>
                                                     <TableCell><Input type="email" value={editedStudent.email} onChange={e => setEditedStudent({ ...editedStudent, email: e.target.value })} /></TableCell>
                                                     <TableCell className="text-right">
-                                                        <Button variant="ghost" size="icon" onClick={() => handleSaveStudent(s.id)}><Check className="h-4 w-4" /></Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => setEditingStudentId(null)}><X className="h-4 w-4" /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleSaveStudent()}><Check className="h-4 w-4" /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleCancelEditStudent()}><X className="h-4 w-4" /></Button>
                                                     </TableCell>
                                                 </>
                                             ) : (
@@ -219,7 +225,7 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
 const AiReports = ({students}: {students: Student[]}) => {
     const { toast } = useToast();
     const [predictions, setPredictions] = useState<any[]>([]);
-    const [isPredictionsLoading, setIsPredictionsLoading] = useState(true);
+    const [isPredictionsLoading, setIsPredictionsLoading] = useState(false);
     const [summary, setSummary] = useState('');
     const [isSummaryLoading, setIsSummaryLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -227,7 +233,6 @@ const AiReports = ({students}: {students: Student[]}) => {
     useEffect(() => {
         const fetchPredictions = async () => {
             if (students.length === 0) {
-                setIsPredictionsLoading(false);
                 return;
             }
             setIsPredictionsLoading(true);
@@ -242,13 +247,16 @@ const AiReports = ({students}: {students: Student[]}) => {
                             .then(res => ({ ...res, studentName: student.name }))
                             .catch(e => {
                                 console.error(`Failed to get prediction for student ${student.id}:`, e);
-                                return null; // Return null or a specific error object on failure
+                                return null; 
                             })
                     )
                 );
                 
-                const validResults = results.filter(p => p && p.willBeAbsent);
+                const validResults = results.filter((p): p is (NonNullable<typeof p>) => p !== null && p.willBeAbsent);
                 setPredictions(validResults);
+                if (results.some(r => r === null)) {
+                    setError("Could not fetch all predictions. The AI model might be temporarily unavailable.");
+                }
 
             } catch (e) {
                 console.error(e);
@@ -311,7 +319,8 @@ const AiReports = ({students}: {students: Student[]}) => {
                                     <li key={i} className="flex items-center gap-3 p-2 bg-secondary rounded-md text-sm"><AlertCircle className="h-4 w-4 text-destructive"/><strong>{p.studentName}:</strong> <span className="text-muted-foreground">{p.reason} ({(p.confidenceScore * 100).toFixed(0)}% confident)</span></li>
                                 ))}
                             </ul>
-                        ) : <div>No high-risk students identified or prediction service is unavailable.</div>}
+                        ) : <div>No high-risk students identified.</div>}
+                         {error && <div className="text-destructive mt-2">{error}</div>}
                     </TabsContent>
                     <TabsContent value="summary" className="mt-4">
                         <form onSubmit={handleGenerateSummary} className="space-y-4">
@@ -328,15 +337,23 @@ const AiReports = ({students}: {students: Student[]}) => {
 // --- Main Admin Dashboard Component ---
 
 export default function AdminDashboard() {
-  const [students, setStudents] = useState<Student[]>(initialStudents);
-  const [teachers, setTeachers] = useState<Teacher[]>(initialTeachers);
+  const [students, setStudents] = usePersistentState<Student[]>('students', initialStudents);
+  const [teachers, setTeachers] = usePersistentState<Teacher[]>('teachers', initialTeachers);
 
-  const addStudent = (student: Student) => {
-    setStudents(prev => [...prev, student]);
+  const addStudent = (studentData: Omit<Student, 'id'>) => {
+    const newStudent: Student = {
+        id: `s${Date.now()}`,
+        ...studentData
+    };
+    setStudents(prev => [...prev, newStudent]);
   };
 
-  const addTeacher = (teacher: Teacher) => {
-    setTeachers(prev => [...prev, teacher]);
+  const addTeacher = (teacherData: Omit<Teacher, 'id'>) => {
+    const newTeacher: Teacher = {
+        id: `t${Date.now()}`,
+        ...teacherData
+    };
+    setTeachers(prev => [...prev, newTeacher]);
   };
 
   const updateStudent = (updatedStudent: Student) => {
