@@ -12,7 +12,8 @@ import { BarChart, Users, UserPlus, BookUser, BrainCircuit, AlertCircle, FileTex
 import { useToast } from "@/hooks/use-toast";
 import { students, teachers, courses, attendanceRecords } from '@/lib/data';
 import type { Student, Teacher } from '@/lib/types';
-import { generateAttendanceSummary, predictStudentAbsence } from '@/ai/flows/predict-student-absence';
+import { predictStudentAbsence } from '@/ai/flows/predict-student-absence';
+import { generateAttendanceSummary } from '@/ai/flows/generate-attendance-summary';
 
 // --- Sub-components for Admin Dashboard ---
 
@@ -145,8 +146,8 @@ const AiReports = () => {
         e.preventDefault();
         setIsSummaryLoading(true);
         // This is a placeholder for the actual `generateAttendanceSummary` call
-        const { output } = await generateAttendanceSummary({timeFrame: "last week", studentGroup: "all students"});
-        setSummary(output?.summary || "Could not generate summary.");
+        const { summary: summaryText } = await generateAttendanceSummary({timeFrame: "last week", studentGroup: "all students"});
+        setSummary(summaryText || "Could not generate summary.");
         setIsSummaryLoading(false);
     };
 
