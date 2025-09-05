@@ -161,7 +161,7 @@ const AttendanceTaker = ({ allStudents }: { allStudents: Student[] }) => {
   );
 };
 
-const RosterManagement = ({ onAddStudent }: { onAddStudent: (student: Omit<Student, 'id'>) => void }) => {
+const RosterManagement = ({ onAddStudent }: { onAddStudent: (student: Omit<Student, 'id' | 'email'> & { email: string }) => void }) => {
   const { toast } = useToast();
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -215,6 +215,10 @@ const AIPredictions = ({ allStudents }: { allStudents: Student[] }) => {
 
   useEffect(() => {
     const fetchPredictions = async () => {
+      if (allStudents.length === 0) {
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
       setError(null);
       try {
@@ -231,10 +235,19 @@ const AIPredictions = ({ allStudents }: { allStudents: Student[] }) => {
             historicalAttendanceData: historicalData,
             currentClassSchedule: scheduleData
           }).then(result => ({ ...result, studentName: student.name }))
+          .catch(e => {
+            console.error(`Failed to get prediction for student ${student.id}:`, e);
+            return null; // Return null on failure for this specific student
+          })
         );
         
         const results = await Promise.all(predictionPromises);
-        setPredictions(results.filter(p => p.willBeAbsent));
+        const validResults = results.filter(p => p && p.willBeAbsent);
+        setPredictions(validResults);
+        if (results.some(r => r === null)) {
+            setError("Could not fetch all predictions. The AI model might be temporarily unavailable.");
+        }
+
       } catch (e) {
         console.error(e);
         setError("Could not fetch predictions. The AI model might be temporarily unavailable.");
@@ -285,7 +298,7 @@ const AIPredictions = ({ allStudents }: { allStudents: Student[] }) => {
             ))}
           </ul>
         ) : (
-          <div className="text-center text-muted-foreground">No absence predictions at this time.</div>
+          <div className="text-center text-muted-foreground">No absence predictions at this time or the prediction service is unavailable.</div>
         )}
       </CardContent>
     </Card>

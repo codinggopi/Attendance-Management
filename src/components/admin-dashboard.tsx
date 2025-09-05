@@ -225,17 +225,30 @@ const AiReports = ({students}: {students: Student[]}) => {
 
     useEffect(() => {
         const fetchPredictions = async () => {
+            if (students.length === 0) {
+                setIsPredictionsLoading(false);
+                return;
+            }
             setIsPredictionsLoading(true);
             setError(null);
             try {
                 const historicalData = JSON.stringify([{ date: '2023-10-02', status: 'present' }, { date: '2023-10-04', status: 'absent' }]);
                 const scheduleData = JSON.stringify(courses.map(c => ({ name: c.name, schedule: c.schedule })));
-                if (students.length > 0) {
-                  const results = await Promise.all(
-                    students.slice(0, 5).map(student => predictStudentAbsence({ studentId: student.id, historicalAttendanceData: historicalData, currentClassSchedule: scheduleData }).then(res => ({ ...res, studentName: student.name })))
-                  );
-                  setPredictions(results.filter(p => p.willBeAbsent));
-                }
+                
+                const results = await Promise.all(
+                    students.slice(0, 5).map(student => 
+                        predictStudentAbsence({ studentId: student.id, historicalAttendanceData: historicalData, currentClassSchedule: scheduleData })
+                            .then(res => ({ ...res, studentName: student.name }))
+                            .catch(e => {
+                                console.error(`Failed to get prediction for student ${student.id}:`, e);
+                                return null; // Return null or a specific error object on failure
+                            })
+                    )
+                );
+                
+                const validResults = results.filter(p => p && p.willBeAbsent);
+                setPredictions(validResults);
+
             } catch (e) {
                 console.error(e);
                 setError("Could not fetch predictions. The AI model might be temporarily unavailable.");
@@ -290,7 +303,7 @@ const AiReports = ({students}: {students: Student[]}) => {
                                     <li key={i} className="flex items-center gap-3 p-2 bg-secondary rounded-md text-sm"><AlertCircle className="h-4 w-4 text-destructive"/><strong>{p.studentName}:</strong> <span className="text-muted-foreground">{p.reason} ({(p.confidenceScore * 100).toFixed(0)}% confident)</span></li>
                                 ))}
                             </ul>
-                        ) : <div>No high-risk students identified.</div>}
+                        ) : <div>No high-risk students identified or prediction service is unavailable.</div>}
                     </TabsContent>
                     <TabsContent value="summary" className="mt-4">
                         <form onSubmit={handleGenerateSummary} className="space-y-4">
