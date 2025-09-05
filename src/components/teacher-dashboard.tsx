@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BrainCircuit, UserPlus, ListChecks, CheckCircle, AlertCircle, XCircle, Clock } from "lucide-react";
+import { BrainCircuit, UserPlus, ListChecks, CheckCircle, AlertCircle, XCircle, Clock, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { courses, students as allStudents, teachers } from '@/lib/data';
 import type { Course, Student, AttendanceStatus } from '@/lib/types';
@@ -55,8 +55,13 @@ const AttendanceTaker = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Take Attendance</CardTitle>
-        <CardDescription>Select a class and mark student attendance for today.</CardDescription>
+        <div className="flex items-center justify-between">
+            <div>
+                <CardTitle>Take Attendance</CardTitle>
+                <CardDescription>Select a class and mark student attendance for today.</CardDescription>
+            </div>
+            <Button variant="outline"><Pencil className="mr-2 h-4 w-4" /> Edit Course</Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <Select onValueChange={setSelectedCourseId} defaultValue={selectedCourseId}>
@@ -244,3 +249,5 @@ export default function TeacherDashboard() {
     </Tabs>
   );
 }
+
+    

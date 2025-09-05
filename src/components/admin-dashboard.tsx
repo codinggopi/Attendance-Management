@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart, Users, UserPlus, BookUser, BrainCircuit, AlertCircle, FileText } from "lucide-react";
+import { BarChart, Users, UserPlus, BookUser, BrainCircuit, AlertCircle, FileText, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { students as initialStudents, teachers as initialTeachers, courses, attendanceRecords } from '@/lib/data';
 import type { Student, Teacher } from '@/lib/types';
@@ -113,10 +113,10 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher }: { st
                         <div className="border rounded-md mb-4">
                             <Table>
                                 <TableHeader>
-                                    <TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead></TableRow>
+                                    <TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead className="text-right">Actions</TableHead></TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {teachers.map(t => <TableRow key={t.id}><TableCell>{t.name}</TableCell><TableCell>{t.email}</TableCell></TableRow>)}
+                                    {teachers.map(t => <TableRow key={t.id}><TableCell>{t.name}</TableCell><TableCell>{t.email}</TableCell><TableCell className="text-right"><Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button></TableCell></TableRow>)}
                                 </TableBody>
                             </Table>
                         </div>
@@ -124,10 +124,10 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher }: { st
                         <div className="border rounded-md">
                         <Table>
                                 <TableHeader>
-                                    <TableRow><TableHead>Name</TableHead><TableHead>Grade</TableHead><TableHead>Email</TableHead></TableRow>
+                                    <TableRow><TableHead>Name</TableHead><TableHead>Grade</TableHead><TableHead>Email</TableHead><TableHead className="text-right">Actions</TableHead></TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {students.map(s => <TableRow key={s.id}><TableCell>{s.name}</TableCell><TableCell>{s.grade}</TableCell><TableCell>{s.email}</TableCell></TableRow>)}
+                                    {students.map(s => <TableRow key={s.id}><TableCell>{s.name}</TableCell><TableCell>{s.grade}</TableCell><TableCell>{s.email}</TableCell><TableCell className="text-right"><Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button></TableCell></TableRow>)}
                                 </TableBody>
                             </Table>
                         </div>
@@ -236,3 +236,5 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+    

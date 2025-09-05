@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CheckCircle, XCircle, Clock, CalendarDays, BookOpen, AlertCircle } from "lucide-react";
+import { CheckCircle, XCircle, Clock, CalendarDays, BookOpen, AlertCircle, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { students, courses, attendanceRecords, getCurrentCourseForStudent } from '@/lib/data';
 import type { AttendanceRecord, AttendanceStatus, Course, Student } from '@/lib/types';
@@ -95,11 +95,16 @@ const AttendanceHistoryCard = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CalendarDays className="text-primary" />
-          My Attendance History
-        </CardTitle>
-        <CardDescription>A log of your attendance records across all classes.</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarDays className="text-primary" />
+              My Attendance History
+            </CardTitle>
+            <CardDescription>A log of your attendance records across all classes.</CardDescription>
+          </div>
+          <Button variant="outline" size="icon"><Pencil className="h-4 w-4" /></Button>
+        </div>
       </CardHeader>
       <CardContent>
         <Table>
@@ -144,3 +149,5 @@ export default function StudentDashboard() {
     </div>
   );
 }
+
+    
