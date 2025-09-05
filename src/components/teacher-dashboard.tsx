@@ -346,12 +346,17 @@ export default function TeacherDashboard() {
   const [teachers] = usePersistentState<Teacher[]>('teachers', initialTeachers);
   const [courses] = usePersistentState<Course[]>('courses', initialCourses);
   const [currentTeacherId, setCurrentTeacherId] = useState(teachers[0]?.id || '');
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
   
   useEffect(() => {
-    if(!currentTeacherId && teachers.length > 0) {
+    if(isClient && !currentTeacherId && teachers.length > 0) {
         setCurrentTeacherId(teachers[0].id)
     }
-  }, [teachers, currentTeacherId]);
+  }, [teachers, currentTeacherId, isClient]);
 
   const handleAddStudent = (studentData: Omit<Student, 'id'>) => {
       const newStudent: Student = {
@@ -360,6 +365,10 @@ export default function TeacherDashboard() {
       };
       setAllStudents(prev => [...prev, newStudent]);
   };
+
+  if (!isClient) {
+    return null; // or a loading spinner
+  }
 
   return (
     <div>

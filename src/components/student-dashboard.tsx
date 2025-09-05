@@ -268,12 +268,17 @@ export default function StudentDashboard() {
   const [students] = usePersistentState<Student[]>('students', initialStudents);
   const [courses, setCourses] = usePersistentState<Course[]>('courses', initialCourses);
   const [currentStudentId, setCurrentStudentId] = useState(students[0]?.id || '');
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    if(!currentStudentId && students.length > 0) {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if(isClient && !currentStudentId && students.length > 0) {
         setCurrentStudentId(students[0].id)
     }
-  }, [students, currentStudentId]);
+  }, [students, currentStudentId, isClient]);
   
   const handleEnroll = (courseId: string) => {
     setCourses(prevCourses => {
@@ -290,6 +295,10 @@ export default function StudentDashboard() {
 
   const currentStudent = students.find(s => s.id === currentStudentId);
   const enrolledCourses = courses.filter(c => c.studentIds.includes(currentStudentId));
+
+  if (!isClient) {
+    return null; // Or a loading spinner
+  }
 
   return (
       <div>

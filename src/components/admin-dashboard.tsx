@@ -339,6 +339,11 @@ const AiReports = ({students}: {students: Student[]}) => {
 export default function AdminDashboard() {
   const [students, setStudents] = usePersistentState<Student[]>('students', initialStudents);
   const [teachers, setTeachers] = usePersistentState<Teacher[]>('teachers', initialTeachers);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const addStudent = (studentData: Omit<Student, 'id'>) => {
     const newStudent: Student = {
@@ -363,6 +368,10 @@ export default function AdminDashboard() {
   const updateTeacher = (updatedTeacher: Teacher) => {
     setTeachers(prev => prev.map(t => t.id === updatedTeacher.id ? updatedTeacher : t));
   };
+  
+  if (!isClient) {
+    return null; // or a loading spinner
+  }
 
   return (
     <div className="space-y-6">
