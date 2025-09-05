@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart, Users, UserPlus, BookUser, BrainCircuit, AlertCircle, FileText, Pencil, Check, X, PlusCircle } from "lucide-react";
+import { BarChart, Users, UserPlus, BookUser, BrainCircuit, AlertCircle, FileText, Pencil, Check, X, PlusCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { students as initialStudents, teachers as initialTeachers, courses as initialCourses, attendanceRecords } from '@/lib/data';
 import type { Student, Teacher, Course } from '@/lib/types';
@@ -16,6 +16,17 @@ import { predictStudentAbsence } from '@/ai/flows/predict-student-absence';
 import { generateAttendanceSummary } from '@/ai/flows/generate-attendance-summary';
 import jsPDF from 'jspdf';
 import { usePersistentState } from '@/hooks/use-persistent-state';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 // --- Sub-components for Admin Dashboard ---
 
@@ -64,7 +75,7 @@ const StatsCards = ({ studentCount, teacherCount, courseCount }: { studentCount:
     );
 };
 
-const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpdateStudent, onUpdateTeacher }: { students: Student[], teachers: Teacher[], onAddStudent: (student: Omit<Student, 'id'>) => void, onAddTeacher: (teacher: Omit<Teacher, 'id'>) => void, onUpdateStudent: (student: Student) => void, onUpdateTeacher: (teacher: Teacher) => void }) => {
+const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpdateStudent, onUpdateTeacher, onDeleteAll }: { students: Student[], teachers: Teacher[], onAddStudent: (student: Omit<Student, 'id'>) => void, onAddTeacher: (teacher: Omit<Teacher, 'id'>) => void, onUpdateStudent: (student: Student) => void, onUpdateTeacher: (teacher: Teacher) => void, onDeleteAll: () => void }) => {
     const { toast } = useToast();
     const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
     const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null);
@@ -137,12 +148,40 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
         setEditingTeacherId(null);
         setEditedTeacher({});
     };
+    
+    const handleDeleteAllClick = () => {
+        onDeleteAll();
+        toast({
+            title: "All Users Deleted",
+            description: "All student and teacher records have been cleared.",
+            variant: "destructive",
+        });
+    }
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>User Management</CardTitle>
-                <CardDescription>Add or view users in the system.</CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between">
+                <div>
+                    <CardTitle>User Management</CardTitle>
+                    <CardDescription>Add, view, or delete users in the system.</CardDescription>
+                </div>
+                 <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4" /> Delete All</Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete all student and teacher data from the application.
+                        </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteAllClick}>Continue</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </CardHeader>
             <CardContent>
                 <Tabs defaultValue="view">
@@ -482,6 +521,11 @@ export default function AdminDashboard() {
     setTeachers(prev => prev.map(t => t.id === updatedTeacher.id ? updatedTeacher : t));
   };
   
+  const deleteAllUsers = () => {
+    setStudents([]);
+    setTeachers([]);
+  }
+
   if (!isClient) {
     return null; // or a loading spinner
   }
@@ -497,6 +541,7 @@ export default function AdminDashboard() {
           onAddTeacher={addTeacher}
           onUpdateStudent={updateStudent}
           onUpdateTeacher={updateTeacher}
+          onDeleteAll={deleteAllUsers}
         />
         <CourseManagement 
             teachers={teachers}
