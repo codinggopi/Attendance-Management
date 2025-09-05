@@ -3,7 +3,7 @@ export type AttendanceStatus = 'present' | 'absent' | 'late' | 'unmarked';
 export interface Student {
   id: string;
   name: string;
-  grade: number;
+  dept: string;
   email: string;
 }
 

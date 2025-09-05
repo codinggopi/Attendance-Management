@@ -87,10 +87,10 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
         const formData = new FormData(e.target as HTMLFormElement);
         const name = formData.get('name') as string;
         const email = formData.get('email') as string;
-        const grade = Number(formData.get('grade'));
+        const dept = formData.get('dept') as string;
         
-        if (name && email && grade) {
-            onAddStudent({ name, email, grade });
+        if (name && email && dept) {
+            onAddStudent({ name, email, dept });
             toast({
                 title: "Student Added",
                 description: `${name} has been added to the system.`,
@@ -225,7 +225,7 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
                         <div className="border rounded-md">
                         <Table>
                                 <TableHeader>
-                                    <TableRow><TableHead>Name</TableHead><TableHead>Grade</TableHead><TableHead>Email</TableHead><TableHead className="text-right">Actions</TableHead></TableRow>
+                                    <TableRow><TableHead>Name</TableHead><TableHead>Department</TableHead><TableHead>Email</TableHead><TableHead className="text-right">Actions</TableHead></TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {students.map(s => (
@@ -233,7 +233,7 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
                                             {editingStudentId === s.id ? (
                                                 <>
                                                     <TableCell><Input value={editedStudent.name} onChange={e => setEditedStudent({ ...editedStudent, name: e.target.value })} /></TableCell>
-                                                    <TableCell><Input type="number" value={editedStudent.grade} onChange={e => setEditedStudent({ ...editedStudent, grade: Number(e.target.value) })} /></TableCell>
+                                                    <TableCell><Input value={editedStudent.dept} onChange={e => setEditedStudent({ ...editedStudent, dept: e.target.value })} /></TableCell>
                                                     <TableCell><Input type="email" value={editedStudent.email} onChange={e => setEditedStudent({ ...editedStudent, email: e.target.value })} /></TableCell>
                                                     <TableCell className="text-right">
                                                         <Button variant="ghost" size="icon" onClick={() => handleSaveStudent()}><Check className="h-4 w-4" /></Button>
@@ -243,7 +243,7 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
                                             ) : (
                                                 <>
                                                     <TableCell>{s.name}</TableCell>
-                                                    <TableCell>{s.grade}</TableCell>
+                                                    <TableCell>{s.dept}</TableCell>
                                                     <TableCell>{s.email}</TableCell>
                                                     <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleEditStudent(s)}><Pencil className="h-4 w-4" /></Button></TableCell>
                                                 </>
@@ -256,7 +256,7 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
                     </TabsContent>
                     <TabsContent value="add-student" className="mt-4">
                         <form className="space-y-4" onSubmit={handleAddStudent}>
-                            <Input name="name" placeholder="Student Name" required /><Input name="email" type="email" placeholder="Student Email" required /><Input name="grade" type="number" placeholder="Grade" required /><Button type="submit" className="w-full">Add Student</Button>
+                            <Input name="name" placeholder="Student Name" required /><Input name="email" type="email" placeholder="Student Email" required /><Input name="dept" placeholder="Department" required /><Button type="submit" className="w-full">Add Student</Button>
                         </form>
                     </TabsContent>
                     <TabsContent value="add-teacher" className="mt-4">

@@ -1,13 +1,13 @@
 import type { Student, Teacher, Course, AttendanceRecord } from './types';
 
 export const students: Student[] = [
-  { id: 's001', name: 'Alice Johnson', grade: 10, email: 'alice.j@example.com' },
-  { id: 's002', name: 'Bob Williams', grade: 11, email: 'bob.w@example.com' },
-  { id: 's003', name: 'Charlie Brown', grade: 9, email: 'charlie.b@example.com' },
-  { id: 's004', name: 'Diana Miller', grade: 12, email: 'diana.m@example.com' },
-  { id: 's005', name: 'Ethan Davis', grade: 10, email: 'ethan.d@example.com' },
-  { id: 's006', name: 'Fiona Garcia', grade: 11, email: 'fiona.g@example.com' },
-  { id: 's007', name: 'George Rodriguez', grade: 9, email: 'george.r@example.com' },
+  { id: 's001', name: 'Alice Johnson', dept: 'Computer Science', email: 'alice.j@example.com' },
+  { id: 's002', name: 'Bob Williams', dept: 'Physics', email: 'bob.w@example.com' },
+  { id: 's003', name: 'Charlie Brown', dept: 'Mathematics', email: 'charlie.b@example.com' },
+  { id: 's004', name: 'Diana Miller', dept: 'Chemistry', email: 'diana.m@example.com' },
+  { id: 's005', name: 'Ethan Davis', dept: 'Computer Science', email: 'ethan.d@example.com' },
+  { id: 's006', name: 'Fiona Garcia', dept: 'Physics', email: 'fiona.g@example.com' },
+  { id: 's007', name: 'George Rodriguez', dept: 'Mathematics', email: 'george.r@example.com' },
 ];
 
 export const teachers: Teacher[] = [

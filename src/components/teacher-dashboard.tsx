@@ -203,10 +203,10 @@ const RosterManagement = ({ onAddStudent }: { onAddStudent: (student: Omit<Stude
     const formData = new FormData(e.target as HTMLFormElement);
     const studentName = formData.get('studentName') as string;
     const studentEmail = formData.get('studentEmail') as string;
-    const studentGrade = formData.get('studentGrade') as string;
+    const studentDept = formData.get('studentDept') as string;
 
-    if (studentName && studentEmail && studentGrade) {
-        onAddStudent({ name: studentName, email: studentEmail, grade: Number(studentGrade) });
+    if (studentName && studentEmail && studentDept) {
+        onAddStudent({ name: studentName, email: studentEmail, dept: studentDept });
         toast({
             title: "Student Added",
             description: `${studentName} has been added to the system.`,
@@ -232,8 +232,8 @@ const RosterManagement = ({ onAddStudent }: { onAddStudent: (student: Omit<Stude
             <Input id="studentEmail" name="studentEmail" type="email" placeholder="e.g., jane.d@example.com" required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="studentGrade">Grade</Label>
-            <Input id="studentGrade" name="studentGrade" type="number" placeholder="e.g., 10" required />
+            <Label htmlFor="studentDept">Department</Label>
+            <Input id="studentDept" name="studentDept" placeholder="e.g., Computer Science" required />
           </div>
           <Button type="submit" className="w-full">Add Student</Button>
         </form>
@@ -251,6 +251,7 @@ const AIPredictions = ({ allStudents, courses }: { allStudents: Student[], cours
   useEffect(() => {
     const fetchPredictions = async () => {
       if (allStudents.length === 0) {
+        setPredictions([]);
         return;
       }
       setIsLoading(true);
@@ -345,18 +346,16 @@ export default function TeacherDashboard() {
   const [allStudents, setAllStudents] = usePersistentState<Student[]>('students', initialStudents);
   const [teachers] = usePersistentState<Teacher[]>('teachers', initialTeachers);
   const [courses] = usePersistentState<Course[]>('courses', initialCourses);
-  const [currentTeacherId, setCurrentTeacherId] = useState(teachers[0]?.id || '');
+  const [currentTeacherId, setCurrentTeacherId] = useState('');
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-  }, []);
-  
-  useEffect(() => {
-    if(isClient && !currentTeacherId && teachers.length > 0) {
-        setCurrentTeacherId(teachers[0].id)
+    if (teachers.length > 0) {
+      setCurrentTeacherId(teachers[0].id)
     }
-  }, [teachers, currentTeacherId, isClient]);
+  }, [teachers]);
+  
 
   const handleAddStudent = (studentData: Omit<Student, 'id'>) => {
       const newStudent: Student = {
