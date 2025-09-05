@@ -9,36 +9,48 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BrainCircuit, UserPlus, ListChecks, CheckCircle, AlertCircle, XCircle, Clock, Pencil } from "lucide-react";
+import { BrainCircuit, UserPlus, ListChecks, CheckCircle, AlertCircle, XCircle, Clock, Pencil, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { courses, students as allStudents, teachers } from '@/lib/data';
+import { courses as initialCourses, students as allStudents, teachers } from '@/lib/data';
 import type { Course, Student, AttendanceStatus } from '@/lib/types';
 import { predictStudentAbsence } from '@/ai/flows/predict-student-absence';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+  DialogClose,
+} from '@/components/ui/dialog';
 
 // Mock current teacher
 const currentTeacher = teachers[0];
-const teacherCourses = courses.filter(c => c.teacherId === currentTeacher.id);
 
 const AttendanceTaker = () => {
   const { toast } = useToast();
-  const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>(teacherCourses[0]?.id);
+  const [courses, setCourses] = useState(initialCourses.filter(c => c.teacherId === currentTeacher.id));
+  const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>(courses[0]?.id);
   const [studentsInCourse, setStudentsInCourse] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({});
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedCourseName, setEditedCourseName] = useState("");
 
   useEffect(() => {
     if (selectedCourseId) {
       const course = courses.find(c => c.id === selectedCourseId);
       if (course) {
+        setEditedCourseName(course.name);
         const studentIds = course.studentIds;
         setStudentsInCourse(allStudents.filter(s => studentIds.includes(s.id)));
         
-        // Reset attendance when course changes
         const initialAttendance: Record<string, AttendanceStatus> = {};
         studentIds.forEach(id => { initialAttendance[id] = 'unmarked' });
         setAttendance(initialAttendance);
       }
     }
-  }, [selectedCourseId]);
+  }, [selectedCourseId, courses]);
 
   const handleAttendanceChange = (studentId: string, status: AttendanceStatus) => {
     setAttendance(prev => ({ ...prev, [studentId]: status }));
@@ -52,6 +64,14 @@ const AttendanceTaker = () => {
     });
   };
 
+  const handleUpdateCourseName = () => {
+    if (!selectedCourseId) return;
+    setCourses(prevCourses => prevCourses.map(c => c.id === selectedCourseId ? {...c, name: editedCourseName} : c));
+    toast({ title: "Course Updated", description: "Course name has been saved." });
+  };
+
+  const selectedCourse = courses.find(c => c.id === selectedCourseId);
+
   return (
     <Card>
       <CardHeader>
@@ -60,7 +80,32 @@ const AttendanceTaker = () => {
                 <CardTitle>Take Attendance</CardTitle>
                 <CardDescription>Select a class and mark student attendance for today.</CardDescription>
             </div>
-            <Button variant="outline"><Pencil className="mr-2 h-4 w-4" /> Edit Course</Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline"><Pencil className="mr-2 h-4 w-4" /> Edit Course</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Edit Course</DialogTitle>
+                  <DialogDescription>
+                    Update the details for the selected course.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="course-name" className="text-right">
+                      Name
+                    </Label>
+                    <Input id="course-name" value={editedCourseName} onChange={(e) => setEditedCourseName(e.target.value)} className="col-span-3" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button type="button" onClick={handleUpdateCourseName}>Save changes</Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -69,7 +114,7 @@ const AttendanceTaker = () => {
             <SelectValue placeholder="Select a course..." />
           </SelectTrigger>
           <SelectContent>
-            {teacherCourses.map(course => (
+            {courses.map(course => (
               <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
             ))}
           </SelectContent>
@@ -171,7 +216,7 @@ const AIPredictions = () => {
           { date: '2023-10-02', status: 'present' },
           { date: '2023-10-04', status: 'absent' },
       ]);
-      const scheduleData = JSON.stringify(courses.map(c => ({ name: c.name, schedule: c.schedule })));
+      const scheduleData = JSON.stringify(initialCourses.map(c => ({ name: c.name, schedule: c.schedule })));
       
       const predictionPromises = studentsToPredict.map(student => 
         predictStudentAbsence({

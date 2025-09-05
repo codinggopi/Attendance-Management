@@ -3,12 +3,24 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CheckCircle, XCircle, Clock, CalendarDays, BookOpen, AlertCircle, Pencil } from "lucide-react";
+import { CheckCircle, XCircle, Clock, CalendarDays, AlertCircle, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { students, courses, attendanceRecords, getCurrentCourseForStudent } from '@/lib/data';
+import { students, courses, attendanceRecords as initialAttendanceRecords, getCurrentCourseForStudent } from '@/lib/data';
 import type { AttendanceRecord, AttendanceStatus, Course, Student } from '@/lib/types';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+  DialogClose,
+} from '@/components/ui/dialog';
 
 // Mock current student
 const currentStudent: Student = students[0];
@@ -77,7 +89,21 @@ const SelfCheckInCard = () => {
 };
 
 const AttendanceHistoryCard = () => {
-  const studentRecords: AttendanceRecord[] = attendanceRecords.filter(r => r.studentId === currentStudent.id);
+  const { toast } = useToast();
+  const [attendanceRecords, setAttendanceRecords] = useState(initialAttendanceRecords.filter(r => r.studentId === currentStudent.id));
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [editedStatus, setEditedStatus] = useState<AttendanceStatus>('present');
+
+  const handleEdit = (record: AttendanceRecord) => {
+    setEditingRecordId(record.id);
+    setEditedStatus(record.status);
+  }
+
+  const handleSave = (recordId: string) => {
+    setAttendanceRecords(prev => prev.map(r => r.id === recordId ? { ...r, status: editedStatus } : r));
+    setEditingRecordId(null);
+    toast({ title: "Record updated" });
+  }
 
   const getStatusBadge = (status: AttendanceStatus) => {
     switch (status) {
@@ -103,7 +129,6 @@ const AttendanceHistoryCard = () => {
             </CardTitle>
             <CardDescription>A log of your attendance records across all classes.</CardDescription>
           </div>
-          <Button variant="outline" size="icon"><Pencil className="h-4 w-4" /></Button>
         </div>
       </CardHeader>
       <CardContent>
@@ -112,22 +137,47 @@ const AttendanceHistoryCard = () => {
             <TableRow>
               <TableHead>Date</TableHead>
               <TableHead>Course</TableHead>
-              <TableHead className="text-right">Status</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {studentRecords.length > 0 ? studentRecords.map(record => {
+            {attendanceRecords.length > 0 ? attendanceRecords.map(record => {
               const course = courses.find(c => c.id === record.courseId);
               return (
                 <TableRow key={record.id}>
                   <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
                   <TableCell>{course?.name || 'Unknown Course'}</TableCell>
-                  <TableCell className="text-right">{getStatusBadge(record.status)}</TableCell>
+                  <TableCell>{getStatusBadge(record.status)}</TableCell>
+                  <TableCell className="text-right">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(record)}><Pencil className="h-4 w-4" /></Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Edit Attendance Record</DialogTitle>
+                        <DialogDescription>
+                          Update the status for this attendance record. This is for demonstration, students would typically not be able to edit this.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <p>Editing record for <strong>{course?.name}</strong> on {new Date(record.date).toLocaleDateString()}</p>
+                        {/* A simple select for demo purposes */}
+                      </div>
+                      <DialogFooter>
+                        <DialogClose asChild>
+                          <Button type="button" onClick={() => handleSave(record.id)}>Save changes</Button>
+                        </DialogClose>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                  </TableCell>
                 </TableRow>
               );
             }) : (
               <TableRow>
-                <TableCell colSpan={3} className="text-center h-24">No attendance records found.</TableCell>
+                <TableCell colSpan={4} className="text-center h-24">No attendance records found.</TableCell>
               </TableRow>
             )}
           </TableBody>

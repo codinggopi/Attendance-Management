@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart, Users, UserPlus, BookUser, BrainCircuit, AlertCircle, FileText, Pencil } from "lucide-react";
+import { BarChart, Users, UserPlus, BookUser, BrainCircuit, AlertCircle, FileText, Pencil, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { students as initialStudents, teachers as initialTeachers, courses, attendanceRecords } from '@/lib/data';
 import type { Student, Teacher } from '@/lib/types';
@@ -53,8 +53,12 @@ const StatsCards = ({ studentCount, teacherCount }: { studentCount: number, teac
     );
 };
 
-const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher }: { students: Student[], teachers: Teacher[], onAddStudent: (student: Student) => void, onAddTeacher: (teacher: Teacher) => void }) => {
+const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpdateStudent, onUpdateTeacher }: { students: Student[], teachers: Teacher[], onAddStudent: (student: Student) => void, onAddTeacher: (teacher: Teacher) => void, onUpdateStudent: (student: Student) => void, onUpdateTeacher: (teacher: Teacher) => void }) => {
     const { toast } = useToast();
+    const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
+    const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null);
+    const [editedStudent, setEditedStudent] = useState<Partial<Student>>({});
+    const [editedTeacher, setEditedTeacher] = useState<Partial<Teacher>>({});
 
     const handleAddStudent = (e: React.FormEvent) => {
         e.preventDefault();
@@ -94,6 +98,29 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher }: { st
         (e.target as HTMLFormElement).reset();
     };
 
+    const handleEditStudent = (student: Student) => {
+        setEditingStudentId(student.id);
+        setEditedStudent(student);
+    };
+
+    const handleSaveStudent = (id: string) => {
+        onUpdateStudent(editedStudent as Student);
+        setEditingStudentId(null);
+        setEditedStudent({});
+        toast({ title: "Student Updated", description: "Student information has been saved." });
+    };
+
+    const handleEditTeacher = (teacher: Teacher) => {
+        setEditingTeacherId(teacher.id);
+        setEditedTeacher(teacher);
+    };
+
+    const handleSaveTeacher = (id: string) => {
+        onUpdateTeacher(editedTeacher as Teacher);
+        setEditingTeacherId(null);
+        setEditedTeacher({});
+        toast({ title: "Teacher Updated", description: "Teacher information has been saved." });
+    };
 
     return (
         <Card>
@@ -116,7 +143,26 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher }: { st
                                     <TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead className="text-right">Actions</TableHead></TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {teachers.map(t => <TableRow key={t.id}><TableCell>{t.name}</TableCell><TableCell>{t.email}</TableCell><TableCell className="text-right"><Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button></TableCell></TableRow>)}
+                                    {teachers.map(t => (
+                                        <TableRow key={t.id}>
+                                            {editingTeacherId === t.id ? (
+                                                <>
+                                                    <TableCell><Input value={editedTeacher.name} onChange={e => setEditedTeacher({ ...editedTeacher, name: e.target.value })} /></TableCell>
+                                                    <TableCell><Input type="email" value={editedTeacher.email} onChange={e => setEditedTeacher({ ...editedTeacher, email: e.target.value })} /></TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Button variant="ghost" size="icon" onClick={() => handleSaveTeacher(t.id)}><Check className="h-4 w-4" /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => setEditingTeacherId(null)}><X className="h-4 w-4" /></Button>
+                                                    </TableCell>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <TableCell>{t.name}</TableCell>
+                                                    <TableCell>{t.email}</TableCell>
+                                                    <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleEditTeacher(t)}><Pencil className="h-4 w-4" /></Button></TableCell>
+                                                </>
+                                            )}
+                                        </TableRow>
+                                    ))}
                                 </TableBody>
                             </Table>
                         </div>
@@ -127,7 +173,28 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher }: { st
                                     <TableRow><TableHead>Name</TableHead><TableHead>Grade</TableHead><TableHead>Email</TableHead><TableHead className="text-right">Actions</TableHead></TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {students.map(s => <TableRow key={s.id}><TableCell>{s.name}</TableCell><TableCell>{s.grade}</TableCell><TableCell>{s.email}</TableCell><TableCell className="text-right"><Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button></TableCell></TableRow>)}
+                                    {students.map(s => (
+                                        <TableRow key={s.id}>
+                                            {editingStudentId === s.id ? (
+                                                <>
+                                                    <TableCell><Input value={editedStudent.name} onChange={e => setEditedStudent({ ...editedStudent, name: e.target.value })} /></TableCell>
+                                                    <TableCell><Input type="number" value={editedStudent.grade} onChange={e => setEditedStudent({ ...editedStudent, grade: Number(e.target.value) })} /></TableCell>
+                                                    <TableCell><Input type="email" value={editedStudent.email} onChange={e => setEditedStudent({ ...editedStudent, email: e.target.value })} /></TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Button variant="ghost" size="icon" onClick={() => handleSaveStudent(s.id)}><Check className="h-4 w-4" /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => setEditingStudentId(null)}><X className="h-4 w-4" /></Button>
+                                                    </TableCell>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <TableCell>{s.name}</TableCell>
+                                                    <TableCell>{s.grade}</TableCell>
+                                                    <TableCell>{s.email}</TableCell>
+                                                    <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleEditStudent(s)}><Pencil className="h-4 w-4" /></Button></TableCell>
+                                                </>
+                                            )}
+                                        </TableRow>
+                                    ))}
                                 </TableBody>
                             </Table>
                         </div>
@@ -173,7 +240,6 @@ const AiReports = ({students}: {students: Student[]}) => {
     const handleGenerateSummary = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSummaryLoading(true);
-        // This is a placeholder for the actual `generateAttendanceSummary` call
         const { summary: summaryText } = await generateAttendanceSummary({timeFrame: "last week", studentGroup: "all students"});
         setSummary(summaryText || "Could not generate summary.");
         setIsSummaryLoading(false);
@@ -226,11 +292,26 @@ export default function AdminDashboard() {
     setTeachers(prev => [...prev, teacher]);
   };
 
+  const updateStudent = (updatedStudent: Student) => {
+    setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
+  };
+
+  const updateTeacher = (updatedTeacher: Teacher) => {
+    setTeachers(prev => prev.map(t => t.id === updatedTeacher.id ? updatedTeacher : t));
+  };
+
   return (
     <div className="space-y-6">
       <StatsCards studentCount={students.length} teacherCount={teachers.length} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <UserManagement students={students} teachers={teachers} onAddStudent={addStudent} onAddTeacher={addTeacher} />
+        <UserManagement 
+          students={students} 
+          teachers={teachers} 
+          onAddStudent={addStudent} 
+          onAddTeacher={addTeacher}
+          onUpdateStudent={updateStudent}
+          onUpdateTeacher={updateTeacher}
+        />
         <AiReports students={students} />
       </div>
     </div>
