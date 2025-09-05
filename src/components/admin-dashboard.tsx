@@ -8,10 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart, Users, UserPlus, BookUser, BrainCircuit, AlertCircle, FileText, Pencil, Check, X } from "lucide-react";
+import { BarChart, Users, UserPlus, BookUser, BrainCircuit, AlertCircle, FileText, Pencil, Check, X, PlusCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { students as initialStudents, teachers as initialTeachers, courses, attendanceRecords } from '@/lib/data';
-import type { Student, Teacher } from '@/lib/types';
+import { students as initialStudents, teachers as initialTeachers, courses as initialCourses, attendanceRecords } from '@/lib/data';
+import type { Student, Teacher, Course } from '@/lib/types';
 import { predictStudentAbsence } from '@/ai/flows/predict-student-absence';
 import { generateAttendanceSummary } from '@/ai/flows/generate-attendance-summary';
 import jsPDF from 'jspdf';
@@ -19,11 +19,11 @@ import { usePersistentState } from '@/hooks/use-persistent-state';
 
 // --- Sub-components for Admin Dashboard ---
 
-const StatsCards = ({ studentCount, teacherCount }: { studentCount: number, teacherCount: number }) => {
+const StatsCards = ({ studentCount, teacherCount, courseCount }: { studentCount: number, teacherCount: number, courseCount: number }) => {
     const attendanceRate = ((attendanceRecords.filter(r => r.status === 'present' || r.status === 'late').length / attendanceRecords.length) * 100).toFixed(1);
 
     return (
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-4">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Total Students</CardTitle>
@@ -40,6 +40,15 @@ const StatsCards = ({ studentCount, teacherCount }: { studentCount: number, teac
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{teacherCount}</div>
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Courses</CardTitle>
+                    <BookUser className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{courseCount}</div>
                 </CardContent>
             </Card>
             <Card>
@@ -222,6 +231,100 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
     );
 };
 
+const CourseManagement = ({ teachers, courses, onAddCourse }: { teachers: Teacher[], courses: Course[], onAddCourse: (course: Omit<Course, 'id' | 'studentIds'>) => void }) => {
+    const { toast } = useToast();
+
+    const handleAddCourse = (e: React.FormEvent) => {
+        e.preventDefault();
+        const formData = new FormData(e.target as HTMLFormElement);
+        const name = formData.get('name') as string;
+        const teacherId = formData.get('teacherId') as string;
+        const schedule = formData.get('schedule') as string;
+
+        if (name && teacherId && schedule) {
+            onAddCourse({ name, teacherId, schedule });
+            toast({
+                title: "Course Added",
+                description: `${name} has been added.`,
+            });
+            (e.target as HTMLFormElement).reset();
+        }
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Course Management</CardTitle>
+                <CardDescription>Manage and add new courses to the system.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Tabs defaultValue="view">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="view">View Courses</TabsTrigger>
+                        <TabsTrigger value="add-course">Add Course</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="view" className="mt-4">
+                         <div className="border rounded-md">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Course Name</TableHead>
+                                        <TableHead>Teacher</TableHead>
+                                        <TableHead>Schedule</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {courses.map(course => {
+                                        const teacher = teachers.find(t => t.id === course.teacherId);
+                                        return (
+                                            <TableRow key={course.id}>
+                                                <TableCell>{course.name}</TableCell>
+                                                <TableCell>{teacher?.name || 'N/A'}</TableCell>
+                                                <TableCell>{course.schedule}</TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </TabsContent>
+                    <TabsContent value="add-course" className="mt-4">
+                        <form className="space-y-4" onSubmit={handleAddCourse}>
+                            <div>
+                                <Label htmlFor="course-name">Course Name</Label>
+                                <Input id="course-name" name="name" placeholder="e.g., Introduction to Physics" required />
+                            </div>
+                            <div>
+                                <Label htmlFor="teacherId">Teacher</Label>
+                                <Select name="teacherId" required>
+                                    <SelectTrigger id="teacherId">
+                                        <SelectValue placeholder="Select a teacher" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {teachers.map(teacher => (
+                                            <SelectItem key={teacher.id} value={teacher.id}>
+                                                {teacher.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                             <div>
+                                <Label htmlFor="schedule">Schedule</Label>
+                                <Input id="schedule" name="schedule" placeholder="e.g., MWF 10:00 AM" required />
+                            </div>
+                            <Button type="submit" className="w-full">
+                                <PlusCircle className="mr-2 h-4 w-4" /> Add Course
+                            </Button>
+                        </form>
+                    </TabsContent>
+                </Tabs>
+            </CardContent>
+        </Card>
+    );
+};
+
+
 const AiReports = ({students}: {students: Student[]}) => {
     const { toast } = useToast();
     const [predictions, setPredictions] = useState<any[]>([]);
@@ -339,6 +442,7 @@ const AiReports = ({students}: {students: Student[]}) => {
 export default function AdminDashboard() {
   const [students, setStudents] = usePersistentState<Student[]>('students', initialStudents);
   const [teachers, setTeachers] = usePersistentState<Teacher[]>('teachers', initialTeachers);
+  const [courses, setCourses] = usePersistentState<Course[]>('courses', initialCourses);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -361,6 +465,15 @@ export default function AdminDashboard() {
     setTeachers(prev => [...prev, newTeacher]);
   };
 
+  const addCourse = (courseData: Omit<Course, 'id' | 'studentIds'>) => {
+    const newCourse: Course = {
+        id: `c${Date.now()}`,
+        studentIds: [],
+        ...courseData
+    };
+    setCourses(prev => [...prev, newCourse]);
+  };
+
   const updateStudent = (updatedStudent: Student) => {
     setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
   };
@@ -375,8 +488,8 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <StatsCards studentCount={students.length} teacherCount={teachers.length} />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <StatsCards studentCount={students.length} teacherCount={teachers.length} courseCount={courses.length} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <UserManagement 
           students={students} 
           teachers={teachers} 
@@ -385,8 +498,15 @@ export default function AdminDashboard() {
           onUpdateStudent={updateStudent}
           onUpdateTeacher={updateTeacher}
         />
-        <AiReports students={students} />
+        <CourseManagement 
+            teachers={teachers}
+            courses={courses}
+            onAddCourse={addCourse}
+        />
       </div>
+       <AiReports students={students} />
     </div>
   );
 }
+
+    
