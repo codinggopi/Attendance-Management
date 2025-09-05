@@ -41,7 +41,7 @@ const StudentSelector = ({ students, currentStudentId, onStudentChange }: { stud
     )
 }
 
-const SelfCheckInCard = ({ courses, student }: { courses: Course[], student?: Student }) => {
+const SelfCheckInCard = ({ courses, student, onCheckIn }: { courses: Course[], student?: Student, onCheckIn: (courseId: string) => void }) => {
   const { toast } = useToast();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [currentCourse, setCurrentCourse] = useState<Course | undefined>(undefined);
@@ -56,19 +56,42 @@ const SelfCheckInCard = ({ courses, student }: { courses: Course[], student?: St
     if (!student) return;
     const findCourse = () => {
         const day = currentTime.getDay();
+        const now = currentTime.getHours() * 60 + currentTime.getMinutes();
+
         return courses.find(c => {
             if (!c.studentIds.includes(student.id)) return false;
-            if (c.schedule.includes("MWF") && (day === 1 || day === 3 || day === 5)) return true;
-            if (c.schedule.includes("TTh") && (day === 2 || day === 4)) return true;
-            return false;
+            
+            const scheduleMatch = (c.schedule.includes("MWF") && (day === 1 || day === 3 || day === 5)) || (c.schedule.includes("TTh") && (day === 2 || day === 4));
+            if (!scheduleMatch) return false;
+
+            const timeMatch = c.schedule.match(/(\d{1,2}):(\d{2})\s(AM|PM)/);
+            if (!timeMatch) return false;
+
+            let hour = parseInt(timeMatch[1]);
+            const minute = parseInt(timeMatch[2]);
+            const period = timeMatch[3];
+
+            if (period === 'PM' && hour !== 12) {
+                hour += 12;
+            }
+            if (period === 'AM' && hour === 12) { // Midnight case
+                hour = 0;
+            }
+            
+            const courseStartTime = hour * 60 + minute;
+            // Allow check-in 15 mins before and up to an hour after start time
+            return now >= courseStartTime - 15 && now <= courseStartTime + 60;
         });
     }
-    setCurrentCourse(findCourse());
+    const course = findCourse();
+    setCurrentCourse(course);
     setIsCheckedIn(false); 
   }, [currentTime, courses, student]);
 
   const handleCheckIn = () => {
+    if(!currentCourse) return;
     setIsCheckedIn(true);
+    onCheckIn(currentCourse.id);
     toast({
       title: "Check-in Successful!",
       description: `You've been marked present for ${currentCourse?.name}.`,
@@ -117,12 +140,17 @@ const SelfCheckInCard = ({ courses, student }: { courses: Course[], student?: St
 
 const AttendanceHistoryCard = ({ courses, studentId }: { courses: Course[], studentId: string }) => {
   const { toast } = useToast();
-  const [attendanceRecords, setAttendanceRecords] = usePersistentState<AttendanceRecord[]>(`attendance_records_${studentId}`, initialAttendanceRecords.filter(r => r.studentId === studentId));
+  const [attendanceRecords, setAttendanceRecords] = usePersistentState<AttendanceRecord[]>(`attendance_records_${studentId}`, []);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [editedStatus, setEditedStatus] = useState<AttendanceStatus>('present');
 
   useEffect(() => {
-    setAttendanceRecords(initialAttendanceRecords.filter(r => r.studentId === studentId))
+    // This effect ensures that the state is re-evaluated if the studentId changes.
+    const studentRecords = JSON.parse(localStorage.getItem(`attendance_records_${studentId}`) || '[]');
+    if (studentRecords.length === 0) {
+        // Initialize with default records if none are in local storage for this student
+        setAttendanceRecords(initialAttendanceRecords.filter(r => r.studentId === studentId));
+    }
   }, [studentId, setAttendanceRecords]);
   
 
@@ -174,7 +202,7 @@ const AttendanceHistoryCard = ({ courses, studentId }: { courses: Course[], stud
             </TableRow>
           </TableHeader>
           <TableBody>
-            {attendanceRecords.length > 0 ? attendanceRecords.map(record => {
+            {attendanceRecords.length > 0 ? [...attendanceRecords].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(record => {
               const course = courses.find(c => c.id === record.courseId);
               return (
                 <TableRow key={record.id}>
@@ -269,6 +297,9 @@ export default function StudentDashboard() {
   const [courses, setCourses] = usePersistentState<Course[]>('courses', initialCourses);
   const [currentStudentId, setCurrentStudentId] = useState(students[0]?.id || '');
   const [isClient, setIsClient] = useState(false);
+  
+  // A dummy state to trigger re-render of AttendanceHistoryCard
+  const [_, setAttendanceRecords] = usePersistentState<AttendanceRecord[]>(`attendance_records_${currentStudentId}`, []);
 
   useEffect(() => {
     setIsClient(true);
@@ -293,6 +324,17 @@ export default function StudentDashboard() {
     });
   };
 
+  const handleCheckIn = (courseId: string) => {
+    const newRecord: AttendanceRecord = {
+        id: `ar${Date.now()}`,
+        studentId: currentStudentId,
+        courseId: courseId,
+        date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+        status: 'present'
+    };
+    setAttendanceRecords(prev => [...prev, newRecord]);
+  }
+
   const currentStudent = students.find(s => s.id === currentStudentId);
   const enrolledCourses = courses.filter(c => c.studentIds.includes(currentStudentId));
 
@@ -305,7 +347,7 @@ export default function StudentDashboard() {
         <StudentSelector students={students} currentStudentId={currentStudentId} onStudentChange={setCurrentStudentId} />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           <div className="lg:col-span-1 flex flex-col gap-6">
-            <SelfCheckInCard courses={courses} student={currentStudent}/>
+            <SelfCheckInCard courses={courses} student={currentStudent} onCheckIn={handleCheckIn}/>
             <EnrollInCourseCard courses={courses} onEnroll={handleEnroll} studentId={currentStudentId} />
           </div>
           <div className="lg:col-span-2">
