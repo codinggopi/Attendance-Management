@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle, XCircle, Clock, CalendarDays, AlertCircle, Pencil, PlusCircle, BookOpen, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { students as initialStudents, courses as initialCourses, attendanceRecords as initialAttendanceRecords, getCurrentCourseForStudent } from '@/lib/data';
+import { students as initialStudents, courses as initialCourses, attendanceRecords as initialAttendanceRecords } from '@/lib/data';
 import type { AttendanceRecord, AttendanceStatus, Course, Student } from '@/lib/types';
 import { usePersistentState } from '@/hooks/use-persistent-state';
 import {
@@ -44,7 +44,7 @@ const StudentSelector = ({ students, currentStudentId, onStudentChange }: { stud
 const SelfCheckInCard = ({ courses, student, onCheckIn }: { courses: Course[], student?: Student, onCheckIn: (courseId: string) => void }) => {
   const { toast } = useToast();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [currentCourse, setCurrentCourse] = useState<Course | undefined>(undefined);
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [isCheckedIn, setIsCheckedIn] = useState(false);
 
   useEffect(() => {
@@ -52,50 +52,27 @@ const SelfCheckInCard = ({ courses, student, onCheckIn }: { courses: Course[], s
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    if (!student) return;
-    const findCourse = () => {
-        const day = currentTime.getDay();
-        const now = currentTime.getHours() * 60 + currentTime.getMinutes();
-
-        return courses.find(c => {
-            if (!c.studentIds.includes(student.id)) return false;
-            
-            const scheduleMatch = (c.schedule.includes("MWF") && (day === 1 || day === 3 || day === 5)) || (c.schedule.includes("TTh") && (day === 2 || day === 4));
-            if (!scheduleMatch) return false;
-
-            const timeMatch = c.schedule.match(/(\d{1,2}):(\d{2})\s(AM|PM)/);
-            if (!timeMatch) return false;
-
-            let hour = parseInt(timeMatch[1]);
-            const minute = parseInt(timeMatch[2]);
-            const period = timeMatch[3];
-
-            if (period === 'PM' && hour !== 12) {
-                hour += 12;
-            }
-            if (period === 'AM' && hour === 12) { // Midnight case
-                hour = 0;
-            }
-            
-            const courseStartTime = hour * 60 + minute;
-            // Allow check-in 15 mins before and up to an hour after start time
-            return now >= courseStartTime - 15 && now <= courseStartTime + 60;
-        });
-    }
-    const course = findCourse();
-    setCurrentCourse(course);
-    setIsCheckedIn(false); 
-  }, [currentTime, courses, student]);
+  const enrolledCourses = student ? courses.filter(c => c.studentIds.includes(student!.id)) : [];
 
   const handleCheckIn = () => {
-    if(!currentCourse) return;
+    if(!selectedCourseId) {
+        toast({
+            variant: "destructive",
+            title: "Check-in Failed!",
+            description: `Please select a course to check-in.`,
+        });
+        return;
+    }
+    const course = courses.find(c => c.id === selectedCourseId);
+    if(!course) return;
+
     setIsCheckedIn(true);
-    onCheckIn(currentCourse.id);
+    onCheckIn(course.id);
     toast({
       title: "Check-in Successful!",
-      description: `You've been marked present for ${currentCourse?.name}.`,
+      description: `You've been marked present for ${course.name}.`,
     });
+    setTimeout(() => setIsCheckedIn(false), 5000); // Allow another check-in after 5s
   };
 
   return (
@@ -105,31 +82,39 @@ const SelfCheckInCard = ({ courses, student, onCheckIn }: { courses: Course[], s
           <CheckCircle className="text-primary" />
           Self Check-In
         </CardTitle>
-        <CardDescription>Mark yourself present for your current class.</CardDescription>
+        <CardDescription>Mark yourself present for your class.</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow space-y-4">
         <div className="p-4 bg-secondary rounded-lg text-center">
           <p className="text-lg font-medium text-muted-foreground">{currentTime.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
           <p className="text-5xl font-bold font-mono text-foreground">{currentTime.toLocaleTimeString()}</p>
         </div>
-        {currentCourse ? (
-          <div className="p-4 border rounded-lg space-y-2">
-            <h3 className="font-semibold text-lg text-primary">{currentCourse.name}</h3>
-            <p className="text-muted-foreground flex items-center gap-2"><Clock className="w-4 h-4" /> {currentCourse.schedule}</p>
-          </div>
+        
+        {enrolledCourses.length > 0 ? (
+            <select
+                value={selectedCourseId}
+                onChange={(e) => setSelectedCourseId(e.target.value)}
+                className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+            >
+                <option value="" disabled>Select a course</option>
+                {enrolledCourses.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+            </select>
         ) : (
           <div className="p-4 border border-dashed rounded-lg flex items-center gap-3 text-muted-foreground">
             <AlertCircle className="w-8 h-8"/>
-            <span>No classes scheduled at this time.</span>
+            <span>You are not enrolled in any courses.</span>
           </div>
         )}
+
       </CardContent>
       <CardFooter>
         <Button 
           className="w-full" 
           size="lg" 
           onClick={handleCheckIn}
-          disabled={!currentCourse || isCheckedIn}
+          disabled={!selectedCourseId || isCheckedIn || enrolledCourses.length === 0}
         >
           {isCheckedIn ? 'Checked-In' : 'Check-In Now'}
         </Button>
@@ -138,22 +123,15 @@ const SelfCheckInCard = ({ courses, student, onCheckIn }: { courses: Course[], s
   );
 };
 
+
 const AttendanceHistoryCard = ({ courses, studentId }: { courses: Course[], studentId: string }) => {
   const { toast } = useToast();
-  const [attendanceRecords, setAttendanceRecords] = usePersistentState<AttendanceRecord[]>(`attendance_records_${studentId}`, []);
+  const [attendanceRecords, setAttendanceRecords] = usePersistentState<AttendanceRecord[]>(`attendanceRecords`, initialAttendanceRecords);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [editedStatus, setEditedStatus] = useState<AttendanceStatus>('present');
   const enrolledCourses = courses.filter(c => c.studentIds.includes(studentId));
 
-  useEffect(() => {
-    // This effect ensures that the state is re-evaluated if the studentId changes.
-    const studentRecords = JSON.parse(localStorage.getItem(`attendance_records_${studentId}`) || '[]');
-    if (studentRecords.length === 0) {
-        // Initialize with default records if none are in local storage for this student
-        setAttendanceRecords(initialAttendanceRecords.filter(r => r.studentId === studentId));
-    }
-  }, [studentId, setAttendanceRecords]);
-  
+  const studentAttendanceRecords = attendanceRecords.filter(r => r.studentId === studentId);
 
   const handleEdit = (record: AttendanceRecord) => {
     setEditingRecordId(record.id);
@@ -203,7 +181,7 @@ const AttendanceHistoryCard = ({ courses, studentId }: { courses: Course[], stud
             </TableRow>
           </TableHeader>
           <TableBody>
-            {attendanceRecords.length > 0 ? [...attendanceRecords].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(record => {
+            {studentAttendanceRecords.length > 0 ? [...studentAttendanceRecords].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(record => {
               const course = enrolledCourses.find(c => c.id === record.courseId);
               if (!course) return null; // Don't render records for courses not currently enrolled in
               return (
@@ -276,7 +254,6 @@ const EnrollInCourseCard = ({ courses, onEnroll, studentId }: { courses: Course[
                             <li key={course.id} className="flex items-center justify-between p-3 bg-secondary rounded-lg">
                                 <div>
                                     <p className="font-semibold">{course.name}</p>
-                                    <p className="text-sm text-muted-foreground">{course.schedule}</p>
                                 </div>
                                 <Button size="sm" onClick={() => handleEnroll(course.id, course.name)}>
                                     <PlusCircle className="mr-2 h-4 w-4" /> Enroll
@@ -300,8 +277,7 @@ export default function StudentDashboard() {
   const [currentStudentId, setCurrentStudentId] = useState(students[0]?.id || '');
   const [isClient, setIsClient] = useState(false);
   
-  // A dummy state to trigger re-render of AttendanceHistoryCard
-  const [attendanceRecords, setAttendanceRecords] = usePersistentState<AttendanceRecord[]>(`attendance_records_${currentStudentId}`, []);
+  const [attendanceRecords, setAttendanceRecords] = usePersistentState<AttendanceRecord[]>('attendanceRecords', initialAttendanceRecords);
 
   useEffect(() => {
     setIsClient(true);

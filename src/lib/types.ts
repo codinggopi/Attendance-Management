@@ -18,7 +18,6 @@ export interface Course {
   name: string;
   teacherId: string;
   studentIds: string[];
-  schedule: string; // e.g., "MWF 10:00 - 11:00"
 }
 
 export interface AttendanceRecord {

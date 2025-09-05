@@ -262,7 +262,7 @@ const AIPredictions = ({ allStudents, courses }: { allStudents: Student[], cours
             { date: '2023-10-02', status: 'present' },
             { date: '2023-10-04', status: 'absent' },
         ]);
-        const scheduleData = JSON.stringify(courses.map(c => ({ name: c.name, schedule: c.schedule })));
+        const scheduleData = JSON.stringify(courses.map(c => ({ name: c.name })));
         
         const predictionPromises = studentsToPredict.map(student => 
           predictStudentAbsence({

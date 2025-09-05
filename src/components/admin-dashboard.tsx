@@ -278,10 +278,9 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteAll }: { tea
         const formData = new FormData(e.target as HTMLFormElement);
         const name = formData.get('name') as string;
         const teacherId = formData.get('teacherId') as string;
-        const schedule = formData.get('schedule') as string;
 
-        if (name && teacherId && schedule) {
-            onAddCourse({ name, teacherId, schedule });
+        if (name && teacherId) {
+            onAddCourse({ name, teacherId });
             toast({
                 title: "Course Added",
                 description: `${name} has been added.`,
@@ -337,7 +336,6 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteAll }: { tea
                                     <TableRow>
                                         <TableHead>Course Name</TableHead>
                                         <TableHead>Teacher</TableHead>
-                                        <TableHead>Schedule</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -347,7 +345,6 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteAll }: { tea
                                             <TableRow key={course.id}>
                                                 <TableCell>{course.name}</TableCell>
                                                 <TableCell>{teacher?.name || 'N/A'}</TableCell>
-                                                <TableCell>{course.schedule}</TableCell>
                                             </TableRow>
                                         );
                                     })}
@@ -375,10 +372,6 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteAll }: { tea
                                         ))}
                                     </SelectContent>
                                 </Select>
-                            </div>
-                             <div>
-                                <Label htmlFor="schedule">Schedule</Label>
-                                <Input id="schedule" name="schedule" placeholder="e.g., MWF 10:00 AM" required />
                             </div>
                             <Button type="submit" className="w-full">
                                 <PlusCircle className="mr-2 h-4 w-4" /> Add Course
@@ -410,7 +403,7 @@ const AiReports = ({students, courses}: {students: Student[], courses: Course[]}
             setError(null);
             try {
                 const historicalData = JSON.stringify([{ date: '2023-10-02', status: 'present' }, { date: '2023-10-04', status: 'absent' }]);
-                const scheduleData = JSON.stringify(courses.map(c => ({ name: c.name, schedule: c.schedule })));
+                const scheduleData = JSON.stringify(courses.map(c => ({ name: c.name })));
                 
                 const results = await Promise.all(
                     students.slice(0, 5).map(student => 

@@ -42,7 +42,7 @@ const prompt = ai.definePrompt({
 
   Student ID: {{{studentId}}}
   Historical Attendance Data: {{{historicalAttendanceData}}}
-  Current Class Schedule: {{{currentClassSchedule}}}
+  Current Courses: {{{currentClassSchedule}}}
 
   Based on the information provided, predict if the student will be absent and provide a reason and confidence score. Follow the output schema. Return a JSON object.
   `,

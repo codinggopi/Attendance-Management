@@ -16,10 +16,10 @@ export const teachers: Teacher[] = [
 ];
 
 export const courses: Course[] = [
-  { id: 'c101', name: 'Algebra II', teacherId: 't01', studentIds: ['s001', 's002', 's005'], schedule: 'MWF 9:00 AM' },
-  { id: 'c202', name: 'World History', teacherId: 't02', studentIds: ['s003', 's004', 's006', 's007'], schedule: 'TTh 1:00 PM' },
-  { id: 'c303', name: 'English Literature', teacherId: 't01', studentIds: ['s001', 's003', 's004'], schedule: 'MWF 11:00 AM' },
-  { id: 'c404', name: 'Chemistry', teacherId: 't02', studentIds: ['s002', 's005', 's006', 's007'], schedule: 'TTh 10:00 AM' },
+  { id: 'c101', name: 'Algebra II', teacherId: 't01', studentIds: ['s001', 's002', 's005'] },
+  { id: 'c202', name: 'World History', teacherId: 't02', studentIds: ['s003', 's004', 's006', 's007'] },
+  { id: 'c303', name: 'English Literature', teacherId: 't01', studentIds: ['s001', 's003', 's004'] },
+  { id: 'c404', name: 'Chemistry', teacherId: 't02', studentIds: ['s002', 's005', 's006', 's007'] },
 ];
 
 export const attendanceRecords: AttendanceRecord[] = [
@@ -35,14 +35,3 @@ export const attendanceRecords: AttendanceRecord[] = [
   { id: 'ar007', studentId: 's003', courseId: 'c202', date: '2023-10-03', status: 'absent' },
   { id: 'ar008', studentId: 's003', courseId: 'c202', date: '2023-10-05', status: 'absent' },
 ];
-
-export const getCurrentCourseForStudent = (studentId: string, date: Date): Course | undefined => {
-  // Simple logic: find a course for today. In a real app, this would be complex.
-  const day = date.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-  return courses.find(c => {
-    if (!c.studentIds.includes(studentId)) return false;
-    if (c.schedule.includes("MWF") && (day === 1 || day === 3 || day === 5)) return true;
-    if (c.schedule.includes("TTh") && (day === 2 || day === 4)) return true;
-    return false;
-  });
-};
