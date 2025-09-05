@@ -143,6 +143,7 @@ const AttendanceHistoryCard = ({ courses, studentId }: { courses: Course[], stud
   const [attendanceRecords, setAttendanceRecords] = usePersistentState<AttendanceRecord[]>(`attendance_records_${studentId}`, []);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [editedStatus, setEditedStatus] = useState<AttendanceStatus>('present');
+  const enrolledCourses = courses.filter(c => c.studentIds.includes(studentId));
 
   useEffect(() => {
     // This effect ensures that the state is re-evaluated if the studentId changes.
@@ -203,7 +204,8 @@ const AttendanceHistoryCard = ({ courses, studentId }: { courses: Course[], stud
           </TableHeader>
           <TableBody>
             {attendanceRecords.length > 0 ? [...attendanceRecords].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(record => {
-              const course = courses.find(c => c.id === record.courseId);
+              const course = enrolledCourses.find(c => c.id === record.courseId);
+              if (!course) return null; // Don't render records for courses not currently enrolled in
               return (
                 <TableRow key={record.id}>
                   {editingRecordId === record.id ? (
@@ -299,7 +301,7 @@ export default function StudentDashboard() {
   const [isClient, setIsClient] = useState(false);
   
   // A dummy state to trigger re-render of AttendanceHistoryCard
-  const [_, setAttendanceRecords] = usePersistentState<AttendanceRecord[]>(`attendance_records_${currentStudentId}`, []);
+  const [attendanceRecords, setAttendanceRecords] = usePersistentState<AttendanceRecord[]>(`attendance_records_${currentStudentId}`, []);
 
   useEffect(() => {
     setIsClient(true);
@@ -336,7 +338,6 @@ export default function StudentDashboard() {
   }
 
   const currentStudent = students.find(s => s.id === currentStudentId);
-  const enrolledCourses = courses.filter(c => c.studentIds.includes(currentStudentId));
 
   if (!isClient) {
     return null; // Or a loading spinner
@@ -351,7 +352,7 @@ export default function StudentDashboard() {
             <EnrollInCourseCard courses={courses} onEnroll={handleEnroll} studentId={currentStudentId} />
           </div>
           <div className="lg:col-span-2">
-            <AttendanceHistoryCard courses={enrolledCourses} studentId={currentStudentId} />
+            <AttendanceHistoryCard courses={courses} studentId={currentStudentId} />
           </div>
         </div>
       </div>
