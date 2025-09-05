@@ -270,7 +270,7 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
     );
 };
 
-const CourseManagement = ({ teachers, courses, onAddCourse }: { teachers: Teacher[], courses: Course[], onAddCourse: (course: Omit<Course, 'id' | 'studentIds'>) => void }) => {
+const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteAll }: { teachers: Teacher[], courses: Course[], onAddCourse: (course: Omit<Course, 'id' | 'studentIds'>) => void, onDeleteAll: () => void }) => {
     const { toast } = useToast();
 
     const handleAddCourse = (e: React.FormEvent) => {
@@ -289,12 +289,40 @@ const CourseManagement = ({ teachers, courses, onAddCourse }: { teachers: Teache
             (e.target as HTMLFormElement).reset();
         }
     };
+    
+    const handleDeleteAllClick = () => {
+        onDeleteAll();
+        toast({
+            title: "All Courses Deleted",
+            description: "All course records have been cleared.",
+            variant: "destructive",
+        });
+    }
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>Course Management</CardTitle>
-                <CardDescription>Manage and add new courses to the system.</CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between">
+                <div>
+                    <CardTitle>Course Management</CardTitle>
+                    <CardDescription>Manage and add new courses to the system.</CardDescription>
+                </div>
+                 <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4" /> Delete All</Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete all course data from the application.
+                        </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteAllClick}>Continue</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </CardHeader>
             <CardContent>
                 <Tabs defaultValue="view">
@@ -525,6 +553,10 @@ export default function AdminDashboard() {
     setStudents([]);
     setTeachers([]);
   }
+  
+  const deleteAllCourses = () => {
+    setCourses([]);
+  }
 
   if (!isClient) {
     return null; // or a loading spinner
@@ -547,6 +579,7 @@ export default function AdminDashboard() {
             teachers={teachers}
             courses={courses}
             onAddCourse={addCourse}
+            onDeleteAll={deleteAllCourses}
         />
       </div>
        <AiReports students={students} courses={courses} />
