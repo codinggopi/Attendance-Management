@@ -14,6 +14,7 @@ import { students as initialStudents, teachers as initialTeachers, courses, atte
 import type { Student, Teacher } from '@/lib/types';
 import { predictStudentAbsence } from '@/ai/flows/predict-student-absence';
 import { generateAttendanceSummary } from '@/ai/flows/generate-attendance-summary';
+import jsPDF from 'jspdf';
 
 // --- Sub-components for Admin Dashboard ---
 
@@ -271,6 +272,13 @@ const AiReports = ({students}: {students: Student[]}) => {
         try {
             const { summary: summaryText } = await generateAttendanceSummary({timeFrame: "last week", studentGroup: "all students"});
             setSummary(summaryText || "Could not generate summary.");
+            
+            if (summaryText) {
+                const doc = new jsPDF();
+                doc.text(summaryText, 10, 10);
+                doc.save("weekly-attendance-summary.pdf");
+            }
+
         } catch (e) {
             console.error(e);
             setSummary("Failed to generate summary. The AI model might be temporarily unavailable.");
@@ -307,7 +315,7 @@ const AiReports = ({students}: {students: Student[]}) => {
                     </TabsContent>
                     <TabsContent value="summary" className="mt-4">
                         <form onSubmit={handleGenerateSummary} className="space-y-4">
-                           <Button type="submit" disabled={isSummaryLoading} className="w-full">{isSummaryLoading ? 'Generating...' : 'Generate Weekly Summary'}</Button>
+                           <Button type="submit" disabled={isSummaryLoading} className="w-full">{isSummaryLoading ? 'Generating...' : 'Generate Weekly Summary & Download PDF'}</Button>
                         </form>
                         {summary && <div className="mt-4 p-4 border rounded-md bg-secondary text-sm">{summary}</div>}
                     </TabsContent>
