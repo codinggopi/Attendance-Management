@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BrainCircuit, UserPlus, ListChecks, CheckCircle, AlertCircle, XCircle, Clock, Pencil, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { courses as initialCourses, students as allStudents, teachers } from '@/lib/data';
+import { courses as initialCourses, students as initialStudents, teachers } from '@/lib/data';
 import type { Course, Student, AttendanceStatus } from '@/lib/types';
 import { predictStudentAbsence } from '@/ai/flows/predict-student-absence';
 import {
@@ -28,7 +28,7 @@ import {
 // Mock current teacher
 const currentTeacher = teachers[0];
 
-const AttendanceTaker = () => {
+const AttendanceTaker = ({ allStudents }: { allStudents: Student[] }) => {
   const { toast } = useToast();
   const [courses, setCourses] = useState(initialCourses.filter(c => c.teacherId === currentTeacher.id));
   const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>(courses[0]?.id);
@@ -49,7 +49,7 @@ const AttendanceTaker = () => {
         setAttendance(initialAttendance);
       }
     }
-  }, [selectedCourseId, courses]);
+  }, [selectedCourseId, courses, allStudents]);
 
   const handleAttendanceChange = (studentId: string, status: AttendanceStatus) => {
     setAttendance(prev => ({ ...prev, [studentId]: status }));
@@ -161,17 +161,23 @@ const AttendanceTaker = () => {
   );
 };
 
-const RosterManagement = () => {
+const RosterManagement = ({ onAddStudent }: { onAddStudent: (student: Omit<Student, 'id'>) => void }) => {
   const { toast } = useToast();
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
-    const studentName = formData.get('studentName');
-    toast({
-        title: "Student Added",
-        description: `${studentName} has been added to the system.`,
-    });
-    (e.target as HTMLFormElement).reset();
+    const studentName = formData.get('studentName') as string;
+    const studentEmail = formData.get('studentEmail') as string;
+    const studentGrade = formData.get('studentGrade') as string;
+
+    if (studentName && studentEmail && studentGrade) {
+        onAddStudent({ name: studentName, email: studentEmail, grade: Number(studentGrade) });
+        toast({
+            title: "Student Added",
+            description: `${studentName} has been added to the system.`,
+        });
+        (e.target as HTMLFormElement).reset();
+    }
   };
 
   return (
@@ -201,7 +207,7 @@ const RosterManagement = () => {
   );
 };
 
-const AIPredictions = () => {
+const AIPredictions = ({ allStudents }: { allStudents: Student[] }) => {
   const { toast } = useToast();
   const [predictions, setPredictions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -243,7 +249,7 @@ const AIPredictions = () => {
     };
 
     fetchPredictions();
-  }, [toast]);
+  }, [toast, allStudents]);
   
   const getIcon = (confidence: number) => {
     if (confidence > 0.75) return <AlertCircle className="h-5 w-5 text-red-500" />;
@@ -288,6 +294,16 @@ const AIPredictions = () => {
 
 
 export default function TeacherDashboard() {
+  const [allStudents, setAllStudents] = useState<Student[]>(initialStudents);
+
+  const handleAddStudent = (studentData: Omit<Student, 'id'>) => {
+      const newStudent: Student = {
+          id: `s${Date.now()}`,
+          ...studentData
+      };
+      setAllStudents(prev => [...prev, newStudent]);
+  };
+
   return (
     <Tabs defaultValue="attendance">
       <TabsList className="grid w-full grid-cols-3">
@@ -296,13 +312,13 @@ export default function TeacherDashboard() {
         <TabsTrigger value="ai"><BrainCircuit className="mr-2 h-4 w-4" />AI Insights</TabsTrigger>
       </TabsList>
       <TabsContent value="attendance" className="mt-6">
-        <AttendanceTaker />
+        <AttendanceTaker allStudents={allStudents} />
       </TabsContent>
       <TabsContent value="roster" className="mt-6">
-        <RosterManagement />
+        <RosterManagement onAddStudent={handleAddStudent} />
       </TabsContent>
       <TabsContent value="ai" className="mt-6">
-        <AIPredictions />
+        <AIPredictions allStudents={allStudents} />
       </TabsContent>
     </Tabs>
   );
