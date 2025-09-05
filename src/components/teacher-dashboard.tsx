@@ -34,7 +34,6 @@ const AttendanceTaker = () => {
   const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>(courses[0]?.id);
   const [studentsInCourse, setStudentsInCourse] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({});
-  const [isEditing, setIsEditing] = useState(false);
   const [editedCourseName, setEditedCourseName] = useState("");
 
   useEffect(() => {
@@ -69,8 +68,6 @@ const AttendanceTaker = () => {
     setCourses(prevCourses => prevCourses.map(c => c.id === selectedCourseId ? {...c, name: editedCourseName} : c));
     toast({ title: "Course Updated", description: "Course name has been saved." });
   };
-
-  const selectedCourse = courses.find(c => c.id === selectedCourseId);
 
   return (
     <Card>
