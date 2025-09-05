@@ -10,8 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Users, UserPlus, BookUser, BrainCircuit, AlertCircle, FileText, Pencil, Check, X, PlusCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { students as initialStudents, teachers as initialTeachers, courses as initialCourses, attendanceRecords } from '@/lib/data';
-import type { Student, Teacher, Course } from '@/lib/types';
+import { students as initialStudents, teachers as initialTeachers, courses as initialCourses, attendanceRecords as initialAttendanceRecords } from '@/lib/data';
+import type { Student, Teacher, Course, AttendanceRecord } from '@/lib/types';
 import { predictStudentAbsence } from '@/ai/flows/predict-student-absence';
 import { generateAttendanceSummary } from '@/ai/flows/generate-attendance-summary';
 import jsPDF from 'jspdf';
@@ -30,8 +30,8 @@ import {
 
 // --- Sub-components for Admin Dashboard ---
 
-const StatsCards = ({ studentCount, teacherCount, courseCount }: { studentCount: number, teacherCount: number, courseCount: number }) => {
-    const attendanceRate = ((attendanceRecords.filter(r => r.status === 'present' || r.status === 'late').length / attendanceRecords.length) * 100).toFixed(1);
+const StatsCards = ({ studentCount, teacherCount, courseCount, attendanceRecords }: { studentCount: number, teacherCount: number, courseCount: number, attendanceRecords: AttendanceRecord[] }) => {
+    const attendanceRate = attendanceRecords.length > 0 ? ((attendanceRecords.filter(r => r.status === 'present' || r.status === 'late').length / attendanceRecords.length) * 100).toFixed(1) : "0.0";
 
     return (
         <div className="grid gap-6 md:grid-cols-4">
@@ -403,6 +403,7 @@ const AiReports = ({students, courses}: {students: Student[], courses: Course[]}
     useEffect(() => {
         const fetchPredictions = async () => {
             if (students.length === 0 || courses.length === 0) {
+                setPredictions([]);
                 return;
             }
             setIsPredictionsLoading(true);
@@ -510,6 +511,8 @@ export default function AdminDashboard() {
   const [students, setStudents] = usePersistentState<Student[]>('students', initialStudents);
   const [teachers, setTeachers] = usePersistentState<Teacher[]>('teachers', initialTeachers);
   const [courses, setCourses] = usePersistentState<Course[]>('courses', initialCourses);
+  const [attendanceRecords, setAttendanceRecords] = usePersistentState<AttendanceRecord[]>('attendanceRecords', initialAttendanceRecords);
+
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -552,6 +555,7 @@ export default function AdminDashboard() {
   const deleteAllUsers = () => {
     setStudents([]);
     setTeachers([]);
+    setAttendanceRecords([]); 
   }
   
   const deleteAllCourses = () => {
@@ -564,7 +568,12 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <StatsCards studentCount={students.length} teacherCount={teachers.length} courseCount={courses.length} />
+      <StatsCards 
+        studentCount={students.length} 
+        teacherCount={teachers.length} 
+        courseCount={courses.length}
+        attendanceRecords={attendanceRecords}
+        />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <UserManagement 
           students={students} 
