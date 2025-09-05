@@ -3,13 +3,11 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CheckCircle, XCircle, Clock, CalendarDays, AlertCircle, Pencil } from "lucide-react";
+import { CheckCircle, XCircle, Clock, CalendarDays, AlertCircle, Pencil, PlusCircle, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { students, courses, attendanceRecords as initialAttendanceRecords, getCurrentCourseForStudent } from '@/lib/data';
+import { students, courses as initialCourses, attendanceRecords as initialAttendanceRecords, getCurrentCourseForStudent } from '@/lib/data';
 import type { AttendanceRecord, AttendanceStatus, Course, Student } from '@/lib/types';
 import {
   Dialog,
@@ -25,7 +23,7 @@ import {
 // Mock current student
 const currentStudent: Student = students[0];
 
-const SelfCheckInCard = () => {
+const SelfCheckInCard = ({ courses }: { courses: Course[] }) => {
   const { toast } = useToast();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [currentCourse, setCurrentCourse] = useState<Course | undefined>(undefined);
@@ -37,8 +35,18 @@ const SelfCheckInCard = () => {
   }, []);
 
   useEffect(() => {
-    setCurrentCourse(getCurrentCourseForStudent(currentStudent.id, currentTime));
-  }, [currentTime]);
+    // This logic needs to be aware of the student's current enrollments
+    const findCourse = () => {
+        const day = currentTime.getDay();
+        return courses.find(c => {
+            if (!c.studentIds.includes(currentStudent.id)) return false;
+            if (c.schedule.includes("MWF") && (day === 1 || day === 3 || day === 5)) return true;
+            if (c.schedule.includes("TTh") && (day === 2 || day === 4)) return true;
+            return false;
+        });
+    }
+    setCurrentCourse(findCourse());
+  }, [currentTime, courses]);
 
   const handleCheckIn = () => {
     setIsCheckedIn(true);
@@ -88,7 +96,7 @@ const SelfCheckInCard = () => {
   );
 };
 
-const AttendanceHistoryCard = () => {
+const AttendanceHistoryCard = ({ courses }: { courses: Course[] }) => {
   const { toast } = useToast();
   const [attendanceRecords, setAttendanceRecords] = useState(initialAttendanceRecords.filter(r => r.studentId === currentStudent.id));
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
@@ -121,15 +129,11 @@ const AttendanceHistoryCard = () => {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <CalendarDays className="text-primary" />
-              My Attendance History
-            </CardTitle>
-            <CardDescription>A log of your attendance records across all classes.</CardDescription>
-          </div>
-        </div>
+        <CardTitle className="flex items-center gap-2">
+          <CalendarDays className="text-primary" />
+          My Attendance History
+        </CardTitle>
+        <CardDescription>A log of your attendance records across all classes.</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
@@ -161,10 +165,7 @@ const AttendanceHistoryCard = () => {
                           Update the status for this attendance record. This is for demonstration, students would typically not be able to edit this.
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <p>Editing record for <strong>{course?.name}</strong> on {new Date(record.date).toLocaleDateString()}</p>
-                        {/* A simple select for demo purposes */}
-                      </div>
+                      {/* Form to edit would go here */}
                       <DialogFooter>
                         <DialogClose asChild>
                           <Button type="button" onClick={() => handleSave(record.id)}>Save changes</Button>
@@ -187,17 +188,77 @@ const AttendanceHistoryCard = () => {
   );
 };
 
+const EnrollInCourseCard = ({ courses, onEnroll }: { courses: Course[], onEnroll: (courseId: string) => void }) => {
+    const availableCourses = courses.filter(c => !c.studentIds.includes(currentStudent.id));
+    const { toast } = useToast();
+
+    const handleEnroll = (courseId: string, courseName: string) => {
+        onEnroll(courseId);
+        toast({
+            title: "Enrolled Successfully!",
+            description: `You have been enrolled in ${courseName}.`
+        })
+    }
+    
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <BookOpen className="text-primary" />
+                    Enroll in Courses
+                </CardTitle>
+                <CardDescription>Add new subjects to your schedule.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {availableCourses.length > 0 ? (
+                    <ul className="space-y-3">
+                        {availableCourses.map(course => (
+                            <li key={course.id} className="flex items-center justify-between p-3 bg-secondary rounded-lg">
+                                <div>
+                                    <p className="font-semibold">{course.name}</p>
+                                    <p className="text-sm text-muted-foreground">{course.schedule}</p>
+                                </div>
+                                <Button size="sm" onClick={() => handleEnroll(course.id, course.name)}>
+                                    <PlusCircle className="mr-2 h-4 w-4" /> Enroll
+                                </Button>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <div className="text-center text-muted-foreground p-4">
+                        No more courses available to enroll in.
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
 export default function StudentDashboard() {
+  const [courses, setCourses] = useState<Course[]>(initialCourses);
+  
+  const handleEnroll = (courseId: string) => {
+    setCourses(prevCourses => {
+        return prevCourses.map(course => {
+            if (course.id === courseId) {
+                return { ...course, studentIds: [...course.studentIds, currentStudent.id] };
+            }
+            return course;
+        });
+    });
+  };
+
+  const enrolledCourses = courses.filter(c => c.studentIds.includes(currentStudent.id));
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-1">
-        <SelfCheckInCard />
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className="lg:col-span-1 flex flex-col gap-6">
+        <SelfCheckInCard courses={courses}/>
+        <EnrollInCourseCard courses={courses} onEnroll={handleEnroll} />
       </div>
       <div className="lg:col-span-2">
-        <AttendanceHistoryCard />
+        <AttendanceHistoryCard courses={enrolledCourses} />
       </div>
     </div>
   );
 }
-
-    
