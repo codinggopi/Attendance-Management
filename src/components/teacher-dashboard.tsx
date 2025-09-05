@@ -205,34 +205,48 @@ const RosterManagement = () => {
 };
 
 const AIPredictions = () => {
+  const { toast } = useToast();
   const [predictions, setPredictions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPredictions = async () => {
       setIsLoading(true);
-      const studentsToPredict = allStudents.slice(0, 3); // Predict for a few students
-      const historicalData = JSON.stringify([
-          { date: '2023-10-02', status: 'present' },
-          { date: '2023-10-04', status: 'absent' },
-      ]);
-      const scheduleData = JSON.stringify(initialCourses.map(c => ({ name: c.name, schedule: c.schedule })));
-      
-      const predictionPromises = studentsToPredict.map(student => 
-        predictStudentAbsence({
-          studentId: student.id,
-          historicalAttendanceData: historicalData,
-          currentClassSchedule: scheduleData
-        }).then(result => ({ ...result, studentName: student.name }))
-      );
-      
-      const results = await Promise.all(predictionPromises);
-      setPredictions(results.filter(p => p.willBeAbsent));
-      setIsLoading(false);
+      setError(null);
+      try {
+        const studentsToPredict = allStudents.slice(0, 3); // Predict for a few students
+        const historicalData = JSON.stringify([
+            { date: '2023-10-02', status: 'present' },
+            { date: '2023-10-04', status: 'absent' },
+        ]);
+        const scheduleData = JSON.stringify(initialCourses.map(c => ({ name: c.name, schedule: c.schedule })));
+        
+        const predictionPromises = studentsToPredict.map(student => 
+          predictStudentAbsence({
+            studentId: student.id,
+            historicalAttendanceData: historicalData,
+            currentClassSchedule: scheduleData
+          }).then(result => ({ ...result, studentName: student.name }))
+        );
+        
+        const results = await Promise.all(predictionPromises);
+        setPredictions(results.filter(p => p.willBeAbsent));
+      } catch (e) {
+        console.error(e);
+        setError("Could not fetch predictions. The AI model might be temporarily unavailable.");
+        toast({
+            variant: "destructive",
+            title: "Prediction Error",
+            description: "Failed to fetch absence predictions.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     fetchPredictions();
-  }, []);
+  }, [toast]);
   
   const getIcon = (confidence: number) => {
     if (confidence > 0.75) return <AlertCircle className="h-5 w-5 text-red-500" />;
@@ -249,7 +263,9 @@ const AIPredictions = () => {
       <CardContent>
         {isLoading ? (
           <div className="text-center text-muted-foreground">Analyzing patterns...</div>
-        ) : predictions.length > 0 ? (
+        ) : error ? (
+            <div className="text-center text-destructive">{error}</div>
+        ): predictions.length > 0 ? (
           <ul className="space-y-4">
             {predictions.map((p, i) => (
               <li key={i} className="flex items-start gap-4 p-3 bg-secondary rounded-lg">
@@ -294,5 +310,3 @@ export default function TeacherDashboard() {
     </Tabs>
   );
 }
-
-    

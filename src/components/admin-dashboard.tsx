@@ -216,33 +216,59 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
 };
 
 const AiReports = ({students}: {students: Student[]}) => {
+    const { toast } = useToast();
     const [predictions, setPredictions] = useState<any[]>([]);
     const [isPredictionsLoading, setIsPredictionsLoading] = useState(true);
     const [summary, setSummary] = useState('');
     const [isSummaryLoading, setIsSummaryLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchPredictions = async () => {
             setIsPredictionsLoading(true);
-            const historicalData = JSON.stringify([{ date: '2023-10-02', status: 'present' }, { date: '2023-10-04', status: 'absent' }]);
-            const scheduleData = JSON.stringify(courses.map(c => ({ name: c.name, schedule: c.schedule })));
-            if (students.length > 0) {
-              const results = await Promise.all(
-                students.slice(0, 5).map(student => predictStudentAbsence({ studentId: student.id, historicalAttendanceData: historicalData, currentClassSchedule: scheduleData }).then(res => ({ ...res, studentName: student.name })))
-              );
-              setPredictions(results.filter(p => p.willBeAbsent));
+            setError(null);
+            try {
+                const historicalData = JSON.stringify([{ date: '2023-10-02', status: 'present' }, { date: '2023-10-04', status: 'absent' }]);
+                const scheduleData = JSON.stringify(courses.map(c => ({ name: c.name, schedule: c.schedule })));
+                if (students.length > 0) {
+                  const results = await Promise.all(
+                    students.slice(0, 5).map(student => predictStudentAbsence({ studentId: student.id, historicalAttendanceData: historicalData, currentClassSchedule: scheduleData }).then(res => ({ ...res, studentName: student.name })))
+                  );
+                  setPredictions(results.filter(p => p.willBeAbsent));
+                }
+            } catch (e) {
+                console.error(e);
+                setError("Could not fetch predictions. The AI model might be temporarily unavailable.");
+                toast({
+                    variant: "destructive",
+                    title: "Prediction Error",
+                    description: "Failed to fetch absence predictions.",
+                });
+            } finally {
+                setIsPredictionsLoading(false);
             }
-            setIsPredictionsLoading(false);
         };
         fetchPredictions();
-    }, [students]);
+    }, [students, toast]);
 
     const handleGenerateSummary = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSummaryLoading(true);
-        const { summary: summaryText } = await generateAttendanceSummary({timeFrame: "last week", studentGroup: "all students"});
-        setSummary(summaryText || "Could not generate summary.");
-        setIsSummaryLoading(false);
+        setSummary('');
+        try {
+            const { summary: summaryText } = await generateAttendanceSummary({timeFrame: "last week", studentGroup: "all students"});
+            setSummary(summaryText || "Could not generate summary.");
+        } catch (e) {
+            console.error(e);
+            setSummary("Failed to generate summary. The AI model might be temporarily unavailable.");
+            toast({
+                variant: "destructive",
+                title: "Summary Error",
+                description: "Failed to generate attendance summary.",
+            });
+        } finally {
+            setIsSummaryLoading(false);
+        }
     };
 
     return (
@@ -258,7 +284,7 @@ const AiReports = ({students}: {students: Student[]}) => {
                         <TabsTrigger value="summary"><FileText className="mr-2 h-4 w-4" />Generate Summary</TabsTrigger>
                     </TabsList>
                     <TabsContent value="predictions" className="mt-4">
-                        {isPredictionsLoading ? <div>Loading predictions...</div> : predictions.length > 0 ? (
+                        {isPredictionsLoading ? <div>Loading predictions...</div> : error ? <div className="text-destructive">{error}</div> : predictions.length > 0 ? (
                             <ul className="space-y-2">
                                 {predictions.map((p, i) => (
                                     <li key={i} className="flex items-center gap-3 p-2 bg-secondary rounded-md text-sm"><AlertCircle className="h-4 w-4 text-destructive"/><strong>{p.studentName}:</strong> <span className="text-muted-foreground">{p.reason} ({(p.confidenceScore * 100).toFixed(0)}% confident)</span></li>
@@ -317,5 +343,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
-    
