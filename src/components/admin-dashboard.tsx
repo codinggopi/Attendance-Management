@@ -10,16 +10,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Users, UserPlus, BookUser, BrainCircuit, AlertCircle, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { students, teachers, courses, attendanceRecords } from '@/lib/data';
+import { students as initialStudents, teachers as initialTeachers, courses, attendanceRecords } from '@/lib/data';
 import type { Student, Teacher } from '@/lib/types';
 import { predictStudentAbsence } from '@/ai/flows/predict-student-absence';
 import { generateAttendanceSummary } from '@/ai/flows/generate-attendance-summary';
 
 // --- Sub-components for Admin Dashboard ---
 
-const StatsCards = () => {
-    const totalStudents = students.length;
-    const totalTeachers = teachers.length;
+const StatsCards = ({ studentCount, teacherCount }: { studentCount: number, teacherCount: number }) => {
     const attendanceRate = ((attendanceRecords.filter(r => r.status === 'present' || r.status === 'late').length / attendanceRecords.length) * 100).toFixed(1);
 
     return (
@@ -30,7 +28,7 @@ const StatsCards = () => {
                     <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{totalStudents}</div>
+                    <div className="text-2xl font-bold">{studentCount}</div>
                 </CardContent>
             </Card>
             <Card>
@@ -39,7 +37,7 @@ const StatsCards = () => {
                     <BookUser className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{totalTeachers}</div>
+                    <div className="text-2xl font-bold">{teacherCount}</div>
                 </CardContent>
             </Card>
             <Card>
@@ -55,19 +53,47 @@ const StatsCards = () => {
     );
 };
 
-const UserManagement = () => {
+const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher }: { students: Student[], teachers: Teacher[], onAddStudent: (student: Student) => void, onAddTeacher: (teacher: Teacher) => void }) => {
     const { toast } = useToast();
 
-    const handleAddUser = (e: React.FormEvent, userType: string) => {
+    const handleAddStudent = (e: React.FormEvent) => {
         e.preventDefault();
         const formData = new FormData(e.target as HTMLFormElement);
-        const name = formData.get('name');
+        const name = formData.get('name') as string;
+        const email = formData.get('email') as string;
+        const grade = Number(formData.get('grade'));
+        const newStudent: Student = {
+            id: `s${Date.now()}`,
+            name,
+            email,
+            grade
+        };
+        onAddStudent(newStudent);
         toast({
-            title: `${userType} Added`,
+            title: "Student Added",
             description: `${name} has been added to the system.`,
         });
         (e.target as HTMLFormElement).reset();
     };
+
+    const handleAddTeacher = (e: React.FormEvent) => {
+        e.preventDefault();
+        const formData = new FormData(e.target as HTMLFormElement);
+        const name = formData.get('name') as string;
+        const email = formData.get('email') as string;
+        const newTeacher: Teacher = {
+            id: `t${Date.now()}`,
+            name,
+            email,
+        };
+        onAddTeacher(newTeacher);
+        toast({
+            title: "Teacher Added",
+            description: `${name} has been added to the system.`,
+        });
+        (e.target as HTMLFormElement).reset();
+    };
+
 
     return (
         <Card>
@@ -107,12 +133,12 @@ const UserManagement = () => {
                         </div>
                     </TabsContent>
                     <TabsContent value="add-student" className="mt-4">
-                        <form className="space-y-4" onSubmit={(e) => handleAddUser(e, "Student")}>
+                        <form className="space-y-4" onSubmit={handleAddStudent}>
                             <Input name="name" placeholder="Student Name" required /><Input name="email" type="email" placeholder="Student Email" required /><Input name="grade" type="number" placeholder="Grade" required /><Button type="submit" className="w-full">Add Student</Button>
                         </form>
                     </TabsContent>
                     <TabsContent value="add-teacher" className="mt-4">
-                        <form className="space-y-4" onSubmit={(e) => handleAddUser(e, "Teacher")}>
+                        <form className="space-y-4" onSubmit={handleAddTeacher}>
                             <Input name="name" placeholder="Teacher Name" required /><Input name="email" type="email" placeholder="Teacher Email" required /><Button type="submit" className="w-full">Add Teacher</Button>
                         </form>
                     </TabsContent>
@@ -122,7 +148,7 @@ const UserManagement = () => {
     );
 };
 
-const AiReports = () => {
+const AiReports = ({students}: {students: Student[]}) => {
     const [predictions, setPredictions] = useState<any[]>([]);
     const [isPredictionsLoading, setIsPredictionsLoading] = useState(true);
     const [summary, setSummary] = useState('');
@@ -133,14 +159,16 @@ const AiReports = () => {
             setIsPredictionsLoading(true);
             const historicalData = JSON.stringify([{ date: '2023-10-02', status: 'present' }, { date: '2023-10-04', status: 'absent' }]);
             const scheduleData = JSON.stringify(courses.map(c => ({ name: c.name, schedule: c.schedule })));
-            const results = await Promise.all(
-              students.slice(0, 5).map(student => predictStudentAbsence({ studentId: student.id, historicalAttendanceData: historicalData, currentClassSchedule: scheduleData }).then(res => ({ ...res, studentName: student.name })))
-            );
-            setPredictions(results.filter(p => p.willBeAbsent));
+            if (students.length > 0) {
+              const results = await Promise.all(
+                students.slice(0, 5).map(student => predictStudentAbsence({ studentId: student.id, historicalAttendanceData: historicalData, currentClassSchedule: scheduleData }).then(res => ({ ...res, studentName: student.name })))
+              );
+              setPredictions(results.filter(p => p.willBeAbsent));
+            }
             setIsPredictionsLoading(false);
         };
         fetchPredictions();
-    }, []);
+    }, [students]);
 
     const handleGenerateSummary = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -187,12 +215,23 @@ const AiReports = () => {
 // --- Main Admin Dashboard Component ---
 
 export default function AdminDashboard() {
+  const [students, setStudents] = useState<Student[]>(initialStudents);
+  const [teachers, setTeachers] = useState<Teacher[]>(initialTeachers);
+
+  const addStudent = (student: Student) => {
+    setStudents(prev => [...prev, student]);
+  };
+
+  const addTeacher = (teacher: Teacher) => {
+    setTeachers(prev => [...prev, teacher]);
+  };
+
   return (
     <div className="space-y-6">
-      <StatsCards />
+      <StatsCards studentCount={students.length} teacherCount={teachers.length} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <UserManagement />
-        <AiReports />
+        <UserManagement students={students} teachers={teachers} onAddStudent={addStudent} onAddTeacher={addTeacher} />
+        <AiReports students={students} />
       </div>
     </div>
   );
