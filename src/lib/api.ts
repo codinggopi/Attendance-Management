@@ -1,3 +1,4 @@
+
 import type { Student, Teacher, Course, AttendanceRecord, AttendanceStatus } from './types';
 
 // TODO: Replace with your actual backend URL
