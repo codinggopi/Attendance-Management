@@ -22,107 +22,238 @@ const handleResponse = async (response: Response) => {
 }
 
 // Student APIs
-export const getStudents = (): Promise<Student[]> => fetch(`${BASE_URL}/api/students/`).then(handleResponse);
-export const addStudent = (studentData: Omit<Student, 'id'>): Promise<Student> => {
-    return fetch(`${BASE_URL}/api/students/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(studentData),
-    }).then(handleResponse);
+export const getStudents = async (): Promise<Student[]> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/students/`);
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to fetch students:", error);
+        throw error;
+    }
 };
-export const updateStudent = (student: Student): Promise<void> => {
-    return fetch(`${BASE_URL}/api/students/${student.id}/`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(student),
-    }).then(handleResponse);
+
+export const addStudent = async (studentData: Omit<Student, 'id'>): Promise<Student> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/students/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(studentData),
+        });
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to add student:", error);
+        throw error;
+    }
 };
-export const deleteStudent = (studentId: string): Promise<void> => {
-    return fetch(`${BASE_URL}/api/students/${studentId}/`, { method: 'DELETE' })
-     .then(handleResponse);
+
+export const updateStudent = async (student: Student): Promise<void> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/students/${student.id}/`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(student),
+        });
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to update student:", error);
+        throw error;
+    }
+};
+
+export const deleteStudent = async (studentId: string): Promise<void> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/students/${studentId}/`, { method: 'DELETE' });
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to delete student:", error);
+        throw error;
+    }
 };
 
 
 // Teacher APIs
-export const getTeachers = (): Promise<Teacher[]> => fetch(`${BASE_URL}/api/teachers/`).then(handleResponse);
-export const addTeacher = (teacherData: Omit<Teacher, 'id'>): Promise<Teacher> => {
-     return fetch(`${BASE_URL}/api/teachers/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(teacherData),
-    }).then(handleResponse);
+export const getTeachers = async (): Promise<Teacher[]> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/teachers/`);
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to fetch teachers:", error);
+        throw error;
+    }
 };
-export const updateTeacher = (teacher: Teacher): Promise<void> => {
-    return fetch(`${BASE_URL}/api/teachers/${teacher.id}/`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(teacher),
-    }).then(handleResponse);
+
+export const addTeacher = async (teacherData: Omit<Teacher, 'id'>): Promise<Teacher> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/teachers/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(teacherData),
+        });
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to add teacher:", error);
+        throw error;
+    }
 };
-export const deleteTeacher = (teacherId: string): Promise<void> => {
-    return fetch(`${BASE_URL}/api/teachers/${teacherId}/`, { method: 'DELETE' })
-     .then(handleResponse);
+
+export const updateTeacher = async (teacher: Teacher): Promise<void> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/teachers/${teacher.id}/`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(teacher),
+        });
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to update teacher:", error);
+        throw error;
+    }
+};
+
+export const deleteTeacher = async (teacherId: string): Promise<void> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/teachers/${teacherId}/`, { method: 'DELETE' });
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to delete teacher:", error);
+        throw error;
+    }
 };
 
 // Course APIs
-export const getCourses = (): Promise<Course[]> => fetch(`${BASE_URL}/api/courses/`).then(handleResponse);
-export const addCourse = (courseData: Omit<Course, 'id'|'studentIds'>): Promise<Course> => {
-    return fetch(`${BASE_URL}/api/courses/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(courseData),
-    }).then(handleResponse);
+export const getCourses = async (): Promise<Course[]> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/courses/`);
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to fetch courses:", error);
+        throw error;
+    }
 };
-export const updateCourse = (course: Course): Promise<void> => {
-    return fetch(`${BASE_URL}/api/courses/${course.id}/`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(course),
-    }).then(handleResponse);
+
+export const addCourse = async (courseData: Omit<Course, 'id'|'studentIds'>): Promise<Course> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/courses/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(courseData),
+        });
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to add course:", error);
+        throw error;
+    }
 };
-export const deleteCourse = (courseId: string): Promise<void> => {
-    return fetch(`${BASE_URL}/api/courses/${courseId}/`, { method: 'DELETE' })
-     .then(handleResponse);
+
+export const updateCourse = async (course: Course): Promise<void> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/courses/${course.id}/`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(course),
+        });
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to update course:", error);
+        throw error;
+    }
 };
-export const deleteAllCourses = (): Promise<void> => {
-    return fetch(`${BASE_URL}/api/courses/all/`, { method: 'DELETE' })
-        .then(handleResponse);
+
+export const deleteCourse = async (courseId: string): Promise<void> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/courses/${courseId}/`, { method: 'DELETE' });
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to delete course:", error);
+        throw error;
+    }
 };
-export const enrollInCourse = (courseId: string, studentId: string): Promise<Course> => {
-    return fetch(`${BASE_URL}/api/courses/${courseId}/enroll/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId }),
-    }).then(handleResponse);
+
+export const deleteAllCourses = async (): Promise<void> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/courses/all/`, { method: 'DELETE' });
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to delete all courses:", error);
+        throw error;
+    }
+};
+
+export const enrollInCourse = async (courseId: string, studentId: string): Promise<Course> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/courses/${courseId}/enroll/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ studentId }),
+        });
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to enroll in course:", error);
+        throw error;
+    }
 }
 
 
 // Attendance APIs
-export const getAttendanceRecords = (): Promise<AttendanceRecord[]> => fetch(`${BASE_URL}/api/attendance/`).then(handleResponse);
-export const addAttendanceRecord = (recordData: Omit<AttendanceRecord, 'id'>): Promise<AttendanceRecord> => {
-    return fetch(`${BASE_URL}/api/attendance/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(recordData),
-    }).then(handleResponse);
+export const getAttendanceRecords = async (): Promise<AttendanceRecord[]> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/attendance/`);
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to fetch attendance records:", error);
+        throw error;
+    }
 };
-export const addBulkAttendanceRecords = (records: Omit<AttendanceRecord, 'id'>[]): Promise<void> => {
-    return fetch(`${BASE_URL}/api/attendance/bulk/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(records),
-    }).then(handleResponse);
+
+export const addAttendanceRecord = async (recordData: Omit<AttendanceRecord, 'id'>): Promise<AttendanceRecord> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/attendance/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(recordData),
+        });
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to add attendance record:", error);
+        throw error;
+    }
 };
-export const updateAttendanceRecord = (record: AttendanceRecord): Promise<void> => {
-    return fetch(`${BASE_URL}/api/attendance/${record.id}/`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(record),
-    }).then(handleResponse);
+
+export const addBulkAttendanceRecords = async (records: Omit<AttendanceRecord, 'id'>[]): Promise<void> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/attendance/bulk/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(records),
+        });
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to add bulk attendance records:", error);
+        throw error;
+    }
+};
+
+export const updateAttendanceRecord = async (record: AttendanceRecord): Promise<void> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/attendance/${record.id}/`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(record),
+        });
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to update attendance record:", error);
+        throw error;
+    }
 }
 
 // User APIs
-export const deleteAllUsers = (): Promise<void> => {
-    return fetch(`${BASE_URL}/api/users/all/`, { method: 'DELETE' })
-     .then(handleResponse);
+export const deleteAllUsers = async (): Promise<void> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/users/all/`, { method: 'DELETE' });
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to delete all users:", error);
+        throw error;
+    }
 }
