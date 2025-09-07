@@ -257,6 +257,16 @@ export const deleteAttendanceRecord = async (recordId: number): Promise<void> =>
     }
 };
 
+export const deleteAllAttendanceRecords = async (): Promise<void> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/attendance/all/`, { method: 'DELETE' });
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to delete all attendance records:", error);
+        throw error;
+    }
+};
+
 // User APIs
 export const deleteAllUsers = async (): Promise<void> => {
     try {

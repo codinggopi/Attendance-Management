@@ -462,7 +462,7 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteCourse, onDe
     );
 };
 
-const AttendanceManagement = ({ students, courses, attendanceRecords, onDelete }: { students: Student[], courses: Course[], attendanceRecords: AttendanceRecord[], onDelete: (id: number) => void }) => {
+const AttendanceManagement = ({ students, courses, attendanceRecords, onDelete, onDeleteAll }: { students: Student[], courses: Course[], attendanceRecords: AttendanceRecord[], onDelete: (id: number) => void, onDeleteAll: () => void }) => {
     const { toast } = useToast();
     const [filteredRecords, setFilteredRecords] = useState<AttendanceRecord[]>(attendanceRecords);
     const [selectedStudent, setSelectedStudent] = useState<string>("all");
@@ -499,6 +499,15 @@ const AttendanceManagement = ({ students, courses, attendanceRecords, onDelete }
         toast({ title: "Record Deleted", description: "The attendance record has been removed." });
     }
 
+    const handleDeleteAllClick = () => {
+        onDeleteAll();
+        toast({
+            title: "All Attendance Records Deleted",
+            description: "All attendance data has been cleared.",
+            variant: "destructive",
+        });
+    };
+
     const getStatusBadge = (status: AttendanceStatus) => {
         switch (status) {
           case 'present':
@@ -515,9 +524,28 @@ const AttendanceManagement = ({ students, courses, attendanceRecords, onDelete }
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>Attendance Management</CardTitle>
-                <CardDescription>Filter and view attendance records across the system.</CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between">
+                <div>
+                    <CardTitle>Attendance Management</CardTitle>
+                    <CardDescription>Filter and view attendance records across the system.</CardDescription>
+                </div>
+                 <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4" /> Delete All</Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete all attendance records from the application.
+                        </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteAllClick}>Continue</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </CardHeader>
             <CardContent>
                 <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -783,6 +811,15 @@ export default function AdminDashboard() {
     }
   }
 
+  const deleteAllAttendanceRecords = async () => {
+    try {
+        await api.deleteAllAttendanceRecords();
+        setAttendanceRecords([]);
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not delete all attendance records." });
+    }
+  }
+
   if (isLoading) {
     return <div>Loading...</div>;
   }
@@ -820,6 +857,7 @@ export default function AdminDashboard() {
         courses={courses} 
         attendanceRecords={attendanceRecords} 
         onDelete={deleteAttendanceRecord}
+        onDeleteAll={deleteAllAttendanceRecords}
         />
     </div>
   );
