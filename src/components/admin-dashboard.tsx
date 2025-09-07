@@ -80,7 +80,7 @@ const StatsCards = ({ studentCount, teacherCount, courseCount, attendanceRecords
     );
 };
 
-const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpdateStudent, onUpdateTeacher, onDeleteStudent, onDeleteTeacher, onDeleteAll }: { students: Student[], teachers: Teacher[], onAddStudent: (student: Omit<Student, 'id'>) => void, onAddTeacher: (teacher: Omit<Teacher, 'id'>) => void, onUpdateStudent: (student: Student) => void, onUpdateTeacher: (teacher: Teacher) => void, onDeleteStudent: (id: number) => void, onDeleteTeacher: (id: number) => void, onDeleteAll: () => void }) => {
+const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpdateStudent, onUpdateTeacher, onDeleteStudent, onDeleteTeacher, onDeleteAllStudents, onDeleteAllTeachers }: { students: Student[], teachers: Teacher[], onAddStudent: (student: Omit<Student, 'id'>) => void, onAddTeacher: (teacher: Omit<Teacher, 'id'>) => void, onUpdateStudent: (student: Student) => void, onUpdateTeacher: (teacher: Teacher) => void, onDeleteStudent: (id: number) => void, onDeleteTeacher: (id: number) => void, onDeleteAllStudents: () => void, onDeleteAllTeachers: () => void }) => {
     const { toast } = useToast();
     const [editingStudentId, setEditingStudentId] = useState<number | null>(null);
     const [editingTeacherId, setEditingTeacherId] = useState<number | null>(null);
@@ -164,39 +164,29 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
         toast({ title: "Teacher Deleted", description: "The teacher has been removed." });
     }
     
-    const handleDeleteAllClick = () => {
-        onDeleteAll();
+    const handleDeleteAllStudentsClick = () => {
+        onDeleteAllStudents();
         toast({
-            title: "All Users Deleted",
-            description: "All student and teacher records have been cleared.",
+            title: "All Students Deleted",
+            description: "All student records have been cleared.",
+            variant: "destructive",
+        });
+    }
+    
+    const handleDeleteAllTeachersClick = () => {
+        onDeleteAllTeachers();
+        toast({
+            title: "All Teachers Deleted",
+            description: "All teacher records have been cleared.",
             variant: "destructive",
         });
     }
 
     return (
         <Card>
-            <CardHeader className="flex flex-row items-start justify-between">
-                <div>
-                    <CardTitle>User Management</CardTitle>
-                    <CardDescription>Add, view, or delete users in the system.</CardDescription>
-                </div>
-                 <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4" /> Delete All</Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete all student and teacher data from the application.
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteAllClick}>Continue</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+            <CardHeader>
+                <CardTitle>User Management</CardTitle>
+                <CardDescription>Add, view, or delete users in the system.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Tabs defaultValue="view">
@@ -206,7 +196,26 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
                         <TabsTrigger value="add-teacher">Add Teacher</TabsTrigger>
                     </TabsList>
                     <TabsContent value="view" className="mt-4">
-                        <h3 className="font-semibold mb-2">Teachers</h3>
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-semibold">Teachers</h3>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="sm" disabled={teachers.length === 0}><Trash2 className="mr-2 h-4 w-4" /> Delete All Teachers</Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete all teacher data.
+                                    </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDeleteAllTeachersClick}>Continue</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
                         <div className="border rounded-md mb-4">
                             <Table>
                                 <TableHeader>
@@ -255,7 +264,26 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
                                 </TableBody>
                             </Table>
                         </div>
-                        <h3 className="font-semibold mb-2">Students</h3>
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-semibold">Students</h3>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="sm" disabled={students.length === 0}><Trash2 className="mr-2 h-4 w-4" /> Delete All Students</Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete all student data.
+                                    </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDeleteAllStudentsClick}>Continue</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
                         <div className="border rounded-md">
                         <Table>
                                 <TableHeader>
@@ -791,14 +819,25 @@ export default function AdminDashboard() {
     }
   };
 
-  const deleteAllUsers = async () => {
+  const deleteAllStudents = async () => {
     try {
-        await api.deleteAllUsers();
+        await api.deleteAllStudents();
         setStudents([]);
-        setTeachers([]);
-        setAttendanceRecords([]); 
+        // Also clear attendance for deleted students
+        const remainingTeacherIds = new Set(teachers.map(t => t.id));
+        setAttendanceRecords(prev => prev.filter(r => remainingTeacherIds.has(students.find(s => s.id === r.studentId)!.id))); 
     } catch (error) {
-        toast({ variant: "destructive", title: "Error", description: "Could not delete all users." });
+        toast({ variant: "destructive", title: "Error", description: "Could not delete all students." });
+    }
+  }
+
+  const deleteAllTeachers = async () => {
+    try {
+        await api.deleteAllTeachers();
+        setTeachers([]);
+        // This will also impact courses and potentially attendance, you might want to handle that cascade
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not delete all teachers." });
     }
   }
   
@@ -842,7 +881,8 @@ export default function AdminDashboard() {
           onUpdateTeacher={updateTeacher}
           onDeleteStudent={deleteStudent}
           onDeleteTeacher={deleteTeacher}
-          onDeleteAll={deleteAllUsers}
+          onDeleteAllStudents={deleteAllStudents}
+          onDeleteAllTeachers={deleteAllTeachers}
         />
         <CourseManagement 
             teachers={teachers}

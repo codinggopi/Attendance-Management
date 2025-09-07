@@ -70,6 +70,16 @@ export const deleteStudent = async (studentId: number): Promise<void> => {
     }
 };
 
+export const deleteAllStudents = async (): Promise<void> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/students/all/`, { method: 'DELETE' });
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to delete all students:", error);
+        throw error;
+    }
+};
+
 
 // Teacher APIs
 export const getTeachers = async (): Promise<Teacher[]> => {
@@ -116,6 +126,16 @@ export const deleteTeacher = async (teacherId: number): Promise<void> => {
         return handleResponse(response);
     } catch (error) {
         console.error("Failed to delete teacher:", error);
+        throw error;
+    }
+};
+
+export const deleteAllTeachers = async (): Promise<void> => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/teachers/all/`, { method: 'DELETE' });
+        return handleResponse(response);
+    } catch (error) {
+        console.error("Failed to delete all teachers:", error);
         throw error;
     }
 };
@@ -266,14 +286,3 @@ export const deleteAllAttendanceRecords = async (): Promise<void> => {
         throw error;
     }
 };
-
-// User APIs
-export const deleteAllUsers = async (): Promise<void> => {
-    try {
-        const response = await fetch(`${BASE_URL}/api/users/all/`, { method: 'DELETE' });
-        return handleResponse(response);
-    } catch (error) {
-        console.error("Failed to delete all users:", error);
-        throw error;
-    }
-}
