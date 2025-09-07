@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -5,19 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CheckCircle, XCircle, Clock, CalendarDays, AlertCircle, Pencil, PlusCircle, BookOpen, Check, X } from "lucide-react";
+import { CheckCircle, XCircle, Clock, CalendarDays, AlertCircle, PlusCircle, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { AttendanceRecord, AttendanceStatus, Course, Student } from '@/lib/types';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogTrigger,
-  DialogClose,
-} from '@/components/ui/dialog';
 import * as api from '@/lib/api';
 
 // This is now a selector, a real app would have a login system.
@@ -40,111 +31,37 @@ const StudentSelector = ({ students, currentStudentId, onStudentChange }: { stud
     )
 }
 
-const SelfCheckInCard = ({ courses, student, onCheckIn }: { courses: Course[], student?: Student, onCheckIn: (courseId: number) => void }) => {
-  const { toast } = useToast();
+const TimeDisplayCard = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [selectedCourseId, setSelectedCourseId] = useState<number | ''>('');
-  const [isCheckedIn, setIsCheckedIn] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const enrolledCourses = student ? courses.filter(c => c.studentIds.includes(student!.id)) : [];
-
-  const handleCheckIn = () => {
-    if(!selectedCourseId) {
-        toast({
-            variant: "destructive",
-            title: "Check-in Failed!",
-            description: `Please select a course to check-in.`,
-        });
-        return;
-    }
-    const course = courses.find(c => c.id === selectedCourseId);
-    if(!course) return;
-
-    setIsCheckedIn(true);
-    onCheckIn(course.id);
-    toast({
-      title: "Check-in Successful!",
-      description: `You've been marked present for ${course.name}.`,
-    });
-    setTimeout(() => setIsCheckedIn(false), 5000); // Allow another check-in after 5s
-  };
-
   return (
     <Card className="flex flex-col">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <CheckCircle className="text-primary" />
-          Self Check-In
+          <Clock className="text-primary" />
+          Current Time
         </CardTitle>
-        <CardDescription>Mark yourself present for your class.</CardDescription>
+        <CardDescription>The official school time.</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow space-y-4">
         <div className="p-4 bg-secondary rounded-lg text-center">
           <p className="text-lg font-medium text-muted-foreground">{currentTime.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
           <p className="text-5xl font-bold font-mono text-foreground">{currentTime.toLocaleTimeString()}</p>
         </div>
-        
-        {enrolledCourses.length > 0 ? (
-            <select
-                value={selectedCourseId}
-                onChange={(e) => setSelectedCourseId(parseInt(e.target.value, 10))}
-                className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
-            >
-                <option value="" disabled>Select a course</option>
-                {enrolledCourses.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-            </select>
-        ) : (
-          <div className="p-4 border border-dashed rounded-lg flex items-center gap-3 text-muted-foreground">
-            <AlertCircle className="w-8 h-8"/>
-            <span>You are not enrolled in any courses.</span>
-          </div>
-        )}
-
       </CardContent>
-      <CardFooter>
-        <Button 
-          className="w-full" 
-          size="lg" 
-          onClick={handleCheckIn}
-          disabled={!selectedCourseId || isCheckedIn || enrolledCourses.length === 0}
-        >
-          {isCheckedIn ? 'Checked-In' : 'Check-In Now'}
-        </Button>
-      </CardFooter>
     </Card>
   );
 };
 
 
-const AttendanceHistoryCard = ({ courses, studentId, attendanceRecords, onUpdateRecord }: { courses: Course[], studentId: number, attendanceRecords: AttendanceRecord[], onUpdateRecord: (record: AttendanceRecord) => void }) => {
-  const { toast } = useToast();
-  const [editingRecordId, setEditingRecordId] = useState<number | null>(null);
-  const [editedStatus, setEditedStatus] = useState<AttendanceStatus>('present');
+const AttendanceHistoryCard = ({ courses, studentId, attendanceRecords }: { courses: Course[], studentId: number, attendanceRecords: AttendanceRecord[] }) => {
   const enrolledCourses = courses.filter(c => c.studentIds.includes(studentId));
-
   const studentAttendanceRecords = attendanceRecords.filter(r => r.studentId === studentId);
-
-  const handleEdit = (record: AttendanceRecord) => {
-    setEditingRecordId(record.id);
-    setEditedStatus(record.status);
-  }
-
-  const handleSave = (record: AttendanceRecord) => {
-    onUpdateRecord({ ...record, status: editedStatus });
-    setEditingRecordId(null);
-    toast({ title: "Record updated" });
-  }
-
-  const handleCancel = () => {
-    setEditingRecordId(null);
-  }
 
   const getStatusBadge = (status: AttendanceStatus) => {
     switch (status) {
@@ -175,7 +92,6 @@ const AttendanceHistoryCard = ({ courses, studentId, attendanceRecords, onUpdate
               <TableHead>Date</TableHead>
               <TableHead>Course</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -184,37 +100,14 @@ const AttendanceHistoryCard = ({ courses, studentId, attendanceRecords, onUpdate
               if (!course) return null; // Don't render records for courses not currently enrolled in
               return (
                 <TableRow key={record.id}>
-                  {editingRecordId === record.id ? (
-                    <>
-                      <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
-                      <TableCell>{course?.name || 'Unknown Course'}</TableCell>
-                      <TableCell>
-                         <select value={editedStatus} onChange={(e) => setEditedStatus(e.target.value as AttendanceStatus)}>
-                            <option value="present">Present</option>
-                            <option value="absent">Absent</option>
-                            <option value="late">Late</option>
-                        </select>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleSave(record)}><Check className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={handleCancel}><X className="h-4 w-4" /></Button>
-                      </TableCell>
-                    </>
-                  ) : (
-                    <>
-                      <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
-                      <TableCell>{course?.name || 'Unknown Course'}</TableCell>
-                      <TableCell>{getStatusBadge(record.status)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(record)}><Pencil className="h-4 w-4" /></Button>
-                      </TableCell>
-                    </>
-                  )}
+                    <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
+                    <TableCell>{course?.name || 'Unknown Course'}</TableCell>
+                    <TableCell>{getStatusBadge(record.status)}</TableCell>
                 </TableRow>
               );
             }) : (
               <TableRow>
-                <TableCell colSpan={4} className="text-center h-24">No attendance records found.</TableCell>
+                <TableCell colSpan={3} className="text-center h-24">No attendance records found.</TableCell>
               </TableRow>
             )}
           </TableBody>
@@ -317,32 +210,6 @@ export default function StudentDashboard() {
     }
   };
 
-  const handleCheckIn = async (courseId: number) => {
-    const newRecordData = {
-        studentId: currentStudentId,
-        courseId: courseId,
-        date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-        status: 'present' as AttendanceStatus
-    };
-    try {
-        const newRecord = await api.addAttendanceRecord(newRecordData);
-        setAttendanceRecords(prev => [...prev, newRecord]);
-    } catch (error) {
-        toast({ variant: "destructive", title: "Error", description: "Could not record check-in." });
-    }
-  }
-
-  const handleUpdateRecord = async (record: AttendanceRecord) => {
-     try {
-        await api.updateAttendanceRecord(record);
-        setAttendanceRecords(prev => prev.map(r => r.id === record.id ? record : r));
-    } catch (error) {
-        toast({ variant: "destructive", title: "Error", description: "Could not update attendance record." });
-    }
-  }
-
-  const currentStudent = students.find(s => s.id === currentStudentId);
-
   if (isLoading) {
     return <div>Loading...</div>;
   }
@@ -352,11 +219,11 @@ export default function StudentDashboard() {
         <StudentSelector students={students} currentStudentId={currentStudentId} onStudentChange={setCurrentStudentId} />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           <div className="lg:col-span-1 flex flex-col gap-6">
-            <SelfCheckInCard courses={courses} student={currentStudent} onCheckIn={handleCheckIn}/>
+            <TimeDisplayCard />
             <EnrollInCourseCard courses={courses} onEnroll={handleEnroll} studentId={currentStudentId} />
           </div>
           <div className="lg:col-span-2">
-            <AttendanceHistoryCard courses={courses} studentId={currentStudentId} attendanceRecords={attendanceRecords} onUpdateRecord={handleUpdateRecord} />
+            <AttendanceHistoryCard courses={courses} studentId={currentStudentId} attendanceRecords={attendanceRecords} />
           </div>
         </div>
       </div>
