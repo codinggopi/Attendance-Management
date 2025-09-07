@@ -74,10 +74,10 @@ const StatsCards = ({ studentCount, teacherCount, courseCount, attendanceRecords
     );
 };
 
-const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpdateStudent, onUpdateTeacher, onDeleteStudent, onDeleteTeacher, onDeleteAll }: { students: Student[], teachers: Teacher[], onAddStudent: (student: Omit<Student, 'id'>) => void, onAddTeacher: (teacher: Omit<Teacher, 'id'>) => void, onUpdateStudent: (student: Student) => void, onUpdateTeacher: (teacher: Teacher) => void, onDeleteStudent: (id: string) => void, onDeleteTeacher: (id: string) => void, onDeleteAll: () => void }) => {
+const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpdateStudent, onUpdateTeacher, onDeleteStudent, onDeleteTeacher, onDeleteAll }: { students: Student[], teachers: Teacher[], onAddStudent: (student: Omit<Student, 'id'>) => void, onAddTeacher: (teacher: Omit<Teacher, 'id'>) => void, onUpdateStudent: (student: Student) => void, onUpdateTeacher: (teacher: Teacher) => void, onDeleteStudent: (id: number) => void, onDeleteTeacher: (id: number) => void, onDeleteAll: () => void }) => {
     const { toast } = useToast();
-    const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
-    const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null);
+    const [editingStudentId, setEditingStudentId] = useState<number | null>(null);
+    const [editingTeacherId, setEditingTeacherId] = useState<number | null>(null);
     const [editedStudent, setEditedStudent] = useState<Partial<Student>>({});
     const [editedTeacher, setEditedTeacher] = useState<Partial<Teacher>>({});
 
@@ -131,7 +131,7 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
         setEditedStudent({});
     };
     
-    const handleDeleteStudentClick = (studentId: string) => {
+    const handleDeleteStudentClick = (studentId: number) => {
         onDeleteStudent(studentId);
         toast({ title: "Student Deleted", description: "The student has been removed." });
     }
@@ -153,7 +153,7 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
         setEditedTeacher({});
     };
 
-    const handleDeleteTeacherClick = (teacherId: string) => {
+    const handleDeleteTeacherClick = (teacherId: number) => {
         onDeleteTeacher(teacherId);
         toast({ title: "Teacher Deleted", description: "The teacher has been removed." });
     }
@@ -317,7 +317,7 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
     );
 };
 
-const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteCourse, onDeleteAll }: { teachers: Teacher[], courses: Course[], onAddCourse: (course: Omit<Course, 'id' | 'studentIds'>) => void, onDeleteCourse: (id: string) => void, onDeleteAll: () => void }) => {
+const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteCourse, onDeleteAll }: { teachers: Teacher[], courses: Course[], onAddCourse: (course: Omit<Course, 'id' | 'studentIds'>) => void, onDeleteCourse: (id: number) => void, onDeleteAll: () => void }) => {
     const { toast } = useToast();
 
     const handleAddCourse = (e: React.FormEvent) => {
@@ -327,7 +327,7 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteCourse, onDe
         const teacherId = formData.get('teacherId') as string;
 
         if (name && teacherId) {
-            onAddCourse({ name, teacherId });
+            onAddCourse({ name, teacherId: parseInt(teacherId, 10) });
             toast({
                 title: "Course Added",
                 description: `${name} has been added.`,
@@ -336,7 +336,7 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteCourse, onDe
         }
     };
     
-    const handleDeleteCourseClick = (courseId: string) => {
+    const handleDeleteCourseClick = (courseId: number) => {
         onDeleteCourse(courseId);
         toast({ title: "Course Deleted", description: "The course has been removed." });
     }
@@ -438,7 +438,7 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteCourse, onDe
                                     </SelectTrigger>
                                     <SelectContent>
                                         {teachers.map(teacher => (
-                                            <SelectItem key={teacher.id} value={teacher.id}>
+                                            <SelectItem key={teacher.id} value={String(teacher.id)}>
                                                 {teacher.name}
                                             </SelectItem>
                                         ))}
@@ -656,7 +656,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const deleteStudent = async (studentId: string) => {
+  const deleteStudent = async (studentId: number) => {
     try {
         await api.deleteStudent(studentId);
         setStudents(prev => prev.filter(s => s.id !== studentId));
@@ -665,7 +665,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const deleteTeacher = async (teacherId: string) => {
+  const deleteTeacher = async (teacherId: number) => {
     try {
         await api.deleteTeacher(teacherId);
         setTeachers(prev => prev.filter(t => t.id !== teacherId));
@@ -674,7 +674,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const deleteCourse = async (courseId: string) => {
+  const deleteCourse = async (courseId: number) => {
     try {
         await api.deleteCourse(courseId);
         setCourses(prev => prev.filter(c => c.id !== courseId));

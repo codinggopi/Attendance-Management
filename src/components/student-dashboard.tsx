@@ -21,7 +21,7 @@ import {
 import * as api from '@/lib/api';
 
 // This is now a selector, a real app would have a login system.
-const StudentSelector = ({ students, currentStudentId, onStudentChange }: { students: Student[], currentStudentId: string, onStudentChange: (id: string) => void }) => {
+const StudentSelector = ({ students, currentStudentId, onStudentChange }: { students: Student[], currentStudentId: number, onStudentChange: (id: number) => void }) => {
     if (students.length === 0) return null;
     return (
         <div className="mb-4">
@@ -29,7 +29,7 @@ const StudentSelector = ({ students, currentStudentId, onStudentChange }: { stud
             <select
                 id="student-selector"
                 value={currentStudentId}
-                onChange={(e) => onStudentChange(e.target.value)}
+                onChange={(e) => onStudentChange(parseInt(e.target.value, 10))}
                 className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
             >
                 {students.map(s => (
@@ -40,10 +40,10 @@ const StudentSelector = ({ students, currentStudentId, onStudentChange }: { stud
     )
 }
 
-const SelfCheckInCard = ({ courses, student, onCheckIn }: { courses: Course[], student?: Student, onCheckIn: (courseId: string) => void }) => {
+const SelfCheckInCard = ({ courses, student, onCheckIn }: { courses: Course[], student?: Student, onCheckIn: (courseId: number) => void }) => {
   const { toast } = useToast();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+  const [selectedCourseId, setSelectedCourseId] = useState<number | ''>('');
   const [isCheckedIn, setIsCheckedIn] = useState(false);
 
   useEffect(() => {
@@ -92,7 +92,7 @@ const SelfCheckInCard = ({ courses, student, onCheckIn }: { courses: Course[], s
         {enrolledCourses.length > 0 ? (
             <select
                 value={selectedCourseId}
-                onChange={(e) => setSelectedCourseId(e.target.value)}
+                onChange={(e) => setSelectedCourseId(parseInt(e.target.value, 10))}
                 className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
             >
                 <option value="" disabled>Select a course</option>
@@ -123,9 +123,9 @@ const SelfCheckInCard = ({ courses, student, onCheckIn }: { courses: Course[], s
 };
 
 
-const AttendanceHistoryCard = ({ courses, studentId, attendanceRecords, onUpdateRecord }: { courses: Course[], studentId: string, attendanceRecords: AttendanceRecord[], onUpdateRecord: (record: AttendanceRecord) => void }) => {
+const AttendanceHistoryCard = ({ courses, studentId, attendanceRecords, onUpdateRecord }: { courses: Course[], studentId: number, attendanceRecords: AttendanceRecord[], onUpdateRecord: (record: AttendanceRecord) => void }) => {
   const { toast } = useToast();
-  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [editingRecordId, setEditingRecordId] = useState<number | null>(null);
   const [editedStatus, setEditedStatus] = useState<AttendanceStatus>('present');
   const enrolledCourses = courses.filter(c => c.studentIds.includes(studentId));
 
@@ -224,11 +224,11 @@ const AttendanceHistoryCard = ({ courses, studentId, attendanceRecords, onUpdate
   );
 };
 
-const EnrollInCourseCard = ({ courses, onEnroll, studentId }: { courses: Course[], onEnroll: (courseId: string) => void, studentId: string }) => {
+const EnrollInCourseCard = ({ courses, onEnroll, studentId }: { courses: Course[], onEnroll: (courseId: number) => void, studentId: number }) => {
     const availableCourses = courses.filter(c => !c.studentIds.includes(studentId));
     const { toast } = useToast();
 
-    const handleEnroll = (courseId: string, courseName: string) => {
+    const handleEnroll = (courseId: number, courseName: string) => {
         onEnroll(courseId);
         toast({
             title: "Enrolled Successfully!",
@@ -274,7 +274,7 @@ export default function StudentDashboard() {
   const [students, setStudents] = useState<Student[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
-  const [currentStudentId, setCurrentStudentId] = useState('');
+  const [currentStudentId, setCurrentStudentId] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchData = async () => {
@@ -308,7 +308,7 @@ export default function StudentDashboard() {
     fetchData();
   }, []);
   
-  const handleEnroll = async (courseId: string) => {
+  const handleEnroll = async (courseId: number) => {
     try {
         const updatedCourse = await api.enrollInCourse(courseId, currentStudentId);
         setCourses(prev => prev.map(c => c.id === courseId ? updatedCourse : c));
@@ -317,7 +317,7 @@ export default function StudentDashboard() {
     }
   };
 
-  const handleCheckIn = async (courseId: string) => {
+  const handleCheckIn = async (courseId: number) => {
     const newRecordData = {
         studentId: currentStudentId,
         courseId: courseId,

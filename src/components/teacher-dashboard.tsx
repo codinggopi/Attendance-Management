@@ -26,14 +26,14 @@ import {
 import * as api from '@/lib/api';
 
 // Mock current teacher
-const TeacherSelector = ({ teachers, currentTeacherId, onTeacherChange }: { teachers: Teacher[], currentTeacherId: string, onTeacherChange: (id: string) => void }) => {
+const TeacherSelector = ({ teachers, currentTeacherId, onTeacherChange }: { teachers: Teacher[], currentTeacherId: number, onTeacherChange: (id: number) => void }) => {
     return (
         <div className="mb-4">
             <label htmlFor="teacher-selector" className="block text-sm font-medium text-gray-700 mb-1">Select Teacher:</label>
             <select
                 id="teacher-selector"
                 value={currentTeacherId}
-                onChange={(e) => onTeacherChange(e.target.value)}
+                onChange={(e) => onTeacherChange(parseInt(e.target.value, 10))}
                 className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
             >
                 {teachers.map(t => (
@@ -44,9 +44,9 @@ const TeacherSelector = ({ teachers, currentTeacherId, onTeacherChange }: { teac
     )
 }
 
-const AttendanceTaker = ({ allStudents, teacherId, courses, onUpdateCourse, onSaveAttendance }: { allStudents: Student[], teacherId: string, courses: Course[], onUpdateCourse: (id: string, name: string) => void, onSaveAttendance: (records: Record<string, AttendanceStatus>) => void }) => {
+const AttendanceTaker = ({ allStudents, teacherId, courses, onUpdateCourse, onSaveAttendance }: { allStudents: Student[], teacherId: number, courses: Course[], onUpdateCourse: (id: number, name: string) => void, onSaveAttendance: (records: Record<string, AttendanceStatus>, courseId: number) => void }) => {
   const { toast } = useToast();
-  const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>(undefined);
+  const [selectedCourseId, setSelectedCourseId] = useState<number | undefined>(undefined);
   const [studentsInCourse, setStudentsInCourse] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({});
   const [editedCourseName, setEditedCourseName] = useState("");
@@ -78,12 +78,13 @@ const AttendanceTaker = ({ allStudents, teacherId, courses, onUpdateCourse, onSa
     }
   }, [selectedCourseId, courses, allStudents]);
 
-  const handleAttendanceChange = (studentId: string, status: AttendanceStatus) => {
+  const handleAttendanceChange = (studentId: number, status: AttendanceStatus) => {
     setAttendance(prev => ({ ...prev, [studentId]: status }));
   };
   
   const handleSubmit = () => {
-    onSaveAttendance(attendance);
+    if (selectedCourseId === undefined) return;
+    onSaveAttendance(attendance, selectedCourseId);
     toast({
       title: "Attendance Submitted!",
       description: "The attendance records have been saved.",
@@ -133,13 +134,13 @@ const AttendanceTaker = ({ allStudents, teacherId, courses, onUpdateCourse, onSa
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Select onValueChange={setSelectedCourseId} value={selectedCourseId}>
+        <Select onValueChange={(value) => setSelectedCourseId(parseInt(value, 10))} value={selectedCourseId !== undefined ? String(selectedCourseId) : undefined}>
           <SelectTrigger>
             <SelectValue placeholder="Select a course..." />
           </SelectTrigger>
           <SelectContent>
             {teacherCourses.length > 0 ? teacherCourses.map(course => (
-              <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
+              <SelectItem key={course.id} value={String(course.id)}>{course.name}</SelectItem>
             )) : <SelectItem value="none" disabled>No courses found for this teacher.</SelectItem>}
           </SelectContent>
         </Select>
@@ -345,7 +346,7 @@ export default function TeacherDashboard() {
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [currentTeacherId, setCurrentTeacherId] = useState('');
+  const [currentTeacherId, setCurrentTeacherId] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchData = async () => {
@@ -389,7 +390,7 @@ export default function TeacherDashboard() {
     }
   };
 
-  const handleUpdateCourse = async (id: string, name: string) => {
+  const handleUpdateCourse = async (id: number, name: string) => {
     const course = courses.find(c => c.id === id);
     if (!course) return;
     const updatedCourse = { ...course, name };
@@ -401,12 +402,12 @@ export default function TeacherDashboard() {
     }
   }
 
-  const handleSaveAttendance = async (attendance: Record<string, AttendanceStatus>) => {
+  const handleSaveAttendance = async (attendance: Record<string, AttendanceStatus>, courseId: number) => {
     const records = Object.entries(attendance)
         .filter(([, status]) => status !== 'unmarked')
         .map(([studentId, status]) => ({
-            studentId,
-            courseId: courses.find(c => c.studentIds.includes(studentId))!.id,
+            studentId: parseInt(studentId, 10),
+            courseId: courseId,
             date: new Date().toISOString().split('T')[0],
             status,
         }));
@@ -425,7 +426,7 @@ export default function TeacherDashboard() {
 
   return (
     <div>
-        <TeacherSelector teachers={teachers} currentTeacherId={currentTeacherId} onTeacherChange={setCurrentTeacherId} />
+        {teachers.length > 0 && currentTeacherId !== 0 && <TeacherSelector teachers={teachers} currentTeacherId={currentTeacherId} onTeacherChange={setCurrentTeacherId} />}
         <Tabs defaultValue="attendance">
         <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="attendance"><ListChecks className="mr-2 h-4 w-4" />Take Attendance</TabsTrigger>

@@ -12,7 +12,7 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const PredictStudentAbsenceInputSchema = z.object({
-  studentId: z.string().describe('The unique identifier of the student.'),
+  studentId: z.number().describe('The unique identifier of the student.'),
   historicalAttendanceData: z.string().describe('Historical attendance data of the student in JSON format.'),
   currentClassSchedule: z.string().describe('The current class schedule of the student in JSON format.'),
 });

@@ -1,29 +1,29 @@
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'unmarked';
 
 export interface Student {
-  id: string;
+  id: number;
   name: string;
   dept: string;
   email: string;
 }
 
 export interface Teacher {
-  id: string;
+  id: number;
   name: string;
   email: string;
 }
 
 export interface Course {
-  id: string;
+  id: number;
   name: string;
-  teacherId: string;
-  studentIds: string[];
+  teacherId: number;
+  studentIds: number[];
 }
 
 export interface AttendanceRecord {
-  id: string;
-  studentId: string;
-  courseId: string;
+  id: number;
+  studentId: number;
+  courseId: number;
   date: string; // YYYY-MM-DD
   status: AttendanceStatus;
 }

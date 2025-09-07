@@ -60,7 +60,7 @@ export const updateStudent = async (student: Student): Promise<void> => {
     }
 };
 
-export const deleteStudent = async (studentId: string): Promise<void> => {
+export const deleteStudent = async (studentId: number): Promise<void> => {
     try {
         const response = await fetch(`${BASE_URL}/api/students/${studentId}/`, { method: 'DELETE' });
         return handleResponse(response);
@@ -110,7 +110,7 @@ export const updateTeacher = async (teacher: Teacher): Promise<void> => {
     }
 };
 
-export const deleteTeacher = async (teacherId: string): Promise<void> => {
+export const deleteTeacher = async (teacherId: number): Promise<void> => {
     try {
         const response = await fetch(`${BASE_URL}/api/teachers/${teacherId}/`, { method: 'DELETE' });
         return handleResponse(response);
@@ -159,7 +159,7 @@ export const updateCourse = async (course: Course): Promise<void> => {
     }
 };
 
-export const deleteCourse = async (courseId: string): Promise<void> => {
+export const deleteCourse = async (courseId: number): Promise<void> => {
     try {
         const response = await fetch(`${BASE_URL}/api/courses/${courseId}/`, { method: 'DELETE' });
         return handleResponse(response);
@@ -179,7 +179,7 @@ export const deleteAllCourses = async (): Promise<void> => {
     }
 };
 
-export const enrollInCourse = async (courseId: string, studentId: string): Promise<Course> => {
+export const enrollInCourse = async (courseId: number, studentId: number): Promise<Course> => {
     try {
         const response = await fetch(`${BASE_URL}/api/courses/${courseId}/enroll/`, {
             method: 'POST',

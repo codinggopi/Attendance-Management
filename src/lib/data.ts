@@ -1,37 +1,37 @@
 import type { Student, Teacher, Course, AttendanceRecord } from './types';
 
 export const students: Student[] = [
-  { id: 's001', name: 'Alice Johnson', dept: 'Computer Science', email: 'alice.j@example.com' },
-  { id: 's002', name: 'Bob Williams', dept: 'Physics', email: 'bob.w@example.com' },
-  { id: 's003', name: 'Charlie Brown', dept: 'Mathematics', email: 'charlie.b@example.com' },
-  { id: 's004', name: 'Diana Miller', dept: 'Chemistry', email: 'diana.m@example.com' },
-  { id: 's005', name: 'Ethan Davis', dept: 'Computer Science', email: 'ethan.d@example.com' },
-  { id: 's006', name: 'Fiona Garcia', dept: 'Physics', email: 'fiona.g@example.com' },
-  { id: 's007', name: 'George Rodriguez', dept: 'Mathematics', email: 'george.r@example.com' },
+  { id: 1, name: 'Alice Johnson', dept: 'Computer Science', email: 'alice.j@example.com' },
+  { id: 2, name: 'Bob Williams', dept: 'Physics', email: 'bob.w@example.com' },
+  { id: 3, name: 'Charlie Brown', dept: 'Mathematics', email: 'charlie.b@example.com' },
+  { id: 4, name: 'Diana Miller', dept: 'Chemistry', email: 'diana.m@example.com' },
+  { id: 5, name: 'Ethan Davis', dept: 'Computer Science', email: 'ethan.d@example.com' },
+  { id: 6, name: 'Fiona Garcia', dept: 'Physics', email: 'fiona.g@example.com' },
+  { id: 7, name: 'George Rodriguez', dept: 'Mathematics', email: 'george.r@example.com' },
 ];
 
 export const teachers: Teacher[] = [
-  { id: 't01', name: 'Mr. Smith', email: 'smith@example.com' },
-  { id: 't02', name: 'Ms. Jones', email: 'jones@example.com' },
+  { id: 1, name: 'Mr. Smith', email: 'smith@example.com' },
+  { id: 2, name: 'Ms. Jones', email: 'jones@example.com' },
 ];
 
 export const courses: Course[] = [
-  { id: 'c101', name: 'Algebra II', teacherId: 't01', studentIds: ['s001', 's002', 's005'] },
-  { id: 'c202', name: 'World History', teacherId: 't02', studentIds: ['s003', 's004', 's006', 's007'] },
-  { id: 'c303', name: 'English Literature', teacherId: 't01', studentIds: ['s001', 's003', 's004'] },
-  { id: 'c404', name: 'Chemistry', teacherId: 't02', studentIds: ['s002', 's005', 's006', 's007'] },
+  { id: 101, name: 'Algebra II', teacherId: 1, studentIds: [1, 2, 5] },
+  { id: 202, name: 'World History', teacherId: 2, studentIds: [3, 4, 6, 7] },
+  { id: 303, name: 'English Literature', teacherId: 1, studentIds: [1, 3, 4] },
+  { id: 404, name: 'Chemistry', teacherId: 2, studentIds: [2, 5, 6, 7] },
 ];
 
 export const attendanceRecords: AttendanceRecord[] = [
   // Alice's records
-  { id: 'ar001', studentId: 's001', courseId: 'c101', date: '2023-10-02', status: 'present' },
-  { id: 'ar002', studentId: 's001', courseId: 'c101', date: '2023-10-04', status: 'absent' },
-  { id: 'ar003', studentId: 's001', courseId: 'c101', date: '2023-10-06', status: 'present' },
+  { id: 1, studentId: 1, courseId: 101, date: '2023-10-02', status: 'present' },
+  { id: 2, studentId: 1, courseId: 101, date: '2023-10-04', status: 'absent' },
+  { id: 3, studentId: 1, courseId: 101, date: '2023-10-06', status: 'present' },
   // Bob's records
-  { id: 'ar004', studentId: 's002', courseId: 'c101', date: '2023-10-02', status: 'present' },
-  { id: 'ar005', studentId: 's002', courseId: 'c101', date: '2023-10-04', status: 'present' },
-  { id: 'ar006', studentId: 's002', courseId: 'c101', date: '2023-10-06', status: 'late' },
+  { id: 4, studentId: 2, courseId: 101, date: '2023-10-02', status: 'present' },
+  { id: 5, studentId: 2, courseId: 101, date: '2023-10-04', status: 'present' },
+  { id: 6, studentId: 2, courseId: 101, date: '2023-10-06', status: 'late' },
   // Charlie's records - poor attendance
-  { id: 'ar007', studentId: 's003', courseId: 'c202', date: '2023-10-03', status: 'absent' },
-  { id: 'ar008', studentId: 's003', courseId: 'c202', date: '2023-10-05', status: 'absent' },
+  { id: 7, studentId: 3, courseId: 202, date: '2023-10-03', status: 'absent' },
+  { id: 8, studentId: 3, courseId: 202, date: '2023-10-05', status: 'absent' },
 ];
