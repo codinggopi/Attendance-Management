@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -9,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BrainCircuit, UserPlus, ListChecks, CheckCircle, AlertCircle, XCircle, Clock, Pencil, Check, X } from "lucide-react";
+import { BrainCircuit, ListChecks, AlertCircle, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Course, Student, AttendanceStatus, Teacher } from '@/lib/types';
 import { predictStudentAbsence } from '@/ai/flows/predict-student-absence';
@@ -195,52 +196,6 @@ const AttendanceTaker = ({ allStudents, teacherId, courses, onUpdateCourse, onSa
   );
 };
 
-const RosterManagement = ({ onAddStudent }: { onAddStudent: (student: Omit<Student, 'id' | 'email'> & { email: string }) => void }) => {
-  const { toast } = useToast();
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const formData = new FormData(e.target as HTMLFormElement);
-    const studentName = formData.get('studentName') as string;
-    const studentEmail = formData.get('studentEmail') as string;
-    const studentDept = formData.get('studentDept') as string;
-
-    if (studentName && studentEmail && studentDept) {
-        onAddStudent({ name: studentName, email: studentEmail, dept: studentDept });
-        toast({
-            title: "Student Added",
-            description: `${studentName} has been added to the system.`,
-        });
-        (e.target as HTMLFormElement).reset();
-    }
-  };
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Add New Student</CardTitle>
-        <CardDescription>Add a new student to the school roster.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <Label htmlFor="studentName">Student Name</Label>
-            <Input id="studentName" name="studentName" placeholder="e.g., Jane Doe" required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="studentEmail">Student Email</Label>
-            <Input id="studentEmail" name="studentEmail" type="email" placeholder="e.g., jane.d@example.com" required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="studentDept">Department</Label>
-            <Input id="studentDept" name="studentDept" placeholder="e.g., Computer Science" required />
-          </div>
-          <Button type="submit" className="w-full">Add Student</Button>
-        </form>
-      </CardContent>
-    </Card>
-  );
-};
-
 const AIPredictions = ({ allStudents, courses }: { allStudents: Student[], courses: Course[] }) => {
   const { toast } = useToast();
   const [predictions, setPredictions] = useState<any[]>([]);
@@ -381,15 +336,6 @@ export default function TeacherDashboard() {
   }, []);
   
 
-  const handleAddStudent = async (studentData: Omit<Student, 'id'>) => {
-    try {
-        const newStudent = await api.addStudent(studentData);
-        setAllStudents(prev => [...prev, newStudent]);
-    } catch (error) {
-        toast({ variant: "destructive", title: "Error", description: "Could not add student." });
-    }
-  };
-
   const handleUpdateCourse = async (id: number, name: string) => {
     const course = courses.find(c => c.id === id);
     if (!course) return;
@@ -428,9 +374,8 @@ export default function TeacherDashboard() {
     <div>
         {teachers.length > 0 && currentTeacherId !== 0 && <TeacherSelector teachers={teachers} currentTeacherId={currentTeacherId} onTeacherChange={setCurrentTeacherId} />}
         <Tabs defaultValue="attendance">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="attendance"><ListChecks className="mr-2 h-4 w-4" />Take Attendance</TabsTrigger>
-            <TabsTrigger value="roster"><UserPlus className="mr-2 h-4 w-4" />Manage Students</TabsTrigger>
             <TabsTrigger value="ai"><BrainCircuit className="mr-2 h-4 w-4" />AI Insights</TabsTrigger>
         </TabsList>
         <TabsContent value="attendance" className="mt-6">
@@ -442,9 +387,6 @@ export default function TeacherDashboard() {
               onSaveAttendance={handleSaveAttendance}
             />
         </TabsContent>
-        <TabsContent value="roster" className="mt-6">
-            <RosterManagement onAddStudent={handleAddStudent} />
-        </TabsContent>
         <TabsContent value="ai" className="mt-6">
             <AIPredictions allStudents={allStudents} courses={courses} />
         </TabsContent>
@@ -452,3 +394,5 @@ export default function TeacherDashboard() {
     </div>
   );
 }
+
+    
