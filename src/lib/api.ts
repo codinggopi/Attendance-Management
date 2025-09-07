@@ -2,8 +2,8 @@
 import type { Student, Teacher, Course, AttendanceRecord, AttendanceStatus } from './types';
 
 // TODO: Replace with your actual backend URL
-const BASE_URL = 'https://t2cl04dd-8000.inc1.devtunnels.ms';
-// const BASE_URL = 'https://codinggopi.pythonanywhere.com';
+// const BASE_URL = 'https://t2cl04dd-8000.inc1.devtunnels.ms';
+const BASE_URL = 'https://codinggopi.pythonanywhere.com';
  
 const handleResponse = async (response: Response) => {
     if (!response.ok) {
