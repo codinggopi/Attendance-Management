@@ -1,8 +1,7 @@
 
-
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -463,7 +462,8 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteCourse, onDe
     );
 };
 
-const AttendanceManagement = ({ students, courses, attendanceRecords }: { students: Student[], courses: Course[], attendanceRecords: AttendanceRecord[] }) => {
+const AttendanceManagement = ({ students, courses, attendanceRecords, onDelete }: { students: Student[], courses: Course[], attendanceRecords: AttendanceRecord[], onDelete: (id: number) => void }) => {
+    const { toast } = useToast();
     const [filteredRecords, setFilteredRecords] = useState<AttendanceRecord[]>(attendanceRecords);
     const [selectedStudent, setSelectedStudent] = useState<string>("all");
     const [selectedCourse, setSelectedCourse] = useState<string>("all");
@@ -475,17 +475,14 @@ const AttendanceManagement = ({ students, courses, attendanceRecords }: { studen
     useEffect(() => {
         let records = [...attendanceRecords];
 
-        // Filter by student
         if (selectedStudent !== "all") {
             records = records.filter(r => r.studentId === parseInt(selectedStudent, 10));
         }
 
-        // Filter by course
         if (selectedCourse !== "all") {
             records = records.filter(r => r.courseId === parseInt(selectedCourse, 10));
         }
 
-        // Filter by date
         if (date?.from && date?.to) {
             records = records.filter(r => {
                 const recordDate = new Date(r.date);
@@ -497,6 +494,11 @@ const AttendanceManagement = ({ students, courses, attendanceRecords }: { studen
 
     }, [selectedStudent, selectedCourse, date, attendanceRecords]);
     
+    const handleDeleteClick = (recordId: number) => {
+        onDelete(recordId);
+        toast({ title: "Record Deleted", description: "The attendance record has been removed." });
+    }
+
     const getStatusBadge = (status: AttendanceStatus) => {
         switch (status) {
           case 'present':
@@ -591,6 +593,7 @@ const AttendanceManagement = ({ students, courses, attendanceRecords }: { studen
                                 <TableHead>Student</TableHead>
                                 <TableHead>Course</TableHead>
                                 <TableHead>Status</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -603,11 +606,30 @@ const AttendanceManagement = ({ students, courses, attendanceRecords }: { studen
                                         <TableCell>{student?.name || 'Unknown'}</TableCell>
                                         <TableCell>{course?.name || 'Unknown'}</TableCell>
                                         <TableCell>{getStatusBadge(record.status)}</TableCell>
+                                        <TableCell className="text-right">
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Delete Record?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            Are you sure you want to delete this attendance record? This action cannot be undone.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteClick(record.id)}>Delete</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </TableCell>
                                     </TableRow>
                                 )
                             }) : (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="h-24 text-center">No records match the current filters.</TableCell>
+                                    <TableCell colSpan={5} className="h-24 text-center">No records match the current filters.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
@@ -732,6 +754,15 @@ export default function AdminDashboard() {
     }
   };
   
+  const deleteAttendanceRecord = async (recordId: number) => {
+    try {
+        await api.deleteAttendanceRecord(recordId);
+        setAttendanceRecords(prev => prev.filter(r => r.id !== recordId));
+    } catch (error) {
+        toast({ variant: "destructive", title: "Error", description: "Could not delete attendance record." });
+    }
+  };
+
   const deleteAllUsers = async () => {
     try {
         await api.deleteAllUsers();
@@ -784,7 +815,12 @@ export default function AdminDashboard() {
             onDeleteAll={deleteAllCourses}
         />
       </div>
-       <AttendanceManagement students={students} courses={courses} attendanceRecords={attendanceRecords} />
+       <AttendanceManagement 
+        students={students} 
+        courses={courses} 
+        attendanceRecords={attendanceRecords} 
+        onDelete={deleteAttendanceRecord}
+        />
     </div>
   );
 }
