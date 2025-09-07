@@ -10,10 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BrainCircuit, ListChecks, AlertCircle, Pencil } from "lucide-react";
+import { ListChecks, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Course, Student, AttendanceStatus, Teacher } from '@/lib/types';
-import { predictStudentAbsence } from '@/ai/flows/predict-student-absence';
 import {
   Dialog,
   DialogContent,
@@ -196,106 +195,6 @@ const AttendanceTaker = ({ allStudents, teacherId, courses, onUpdateCourse, onSa
   );
 };
 
-const AIPredictions = ({ allStudents, courses }: { allStudents: Student[], courses: Course[] }) => {
-  const { toast } = useToast();
-  const [predictions, setPredictions] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchPredictions = async () => {
-      if (allStudents.length === 0) {
-        setPredictions([]);
-        return;
-      }
-      setIsLoading(true);
-      setError(null);
-      try {
-        const studentsToPredict = allStudents.slice(0, 3);
-        const historicalData = JSON.stringify([
-            { date: '2023-10-02', status: 'present' },
-            { date: '2023-10-04', status: 'absent' },
-        ]);
-        const scheduleData = JSON.stringify(courses.map(c => ({ name: c.name })));
-        
-        const predictionPromises = studentsToPredict.map(student => 
-          predictStudentAbsence({
-            studentId: student.id,
-            historicalAttendanceData: historicalData,
-            currentClassSchedule: scheduleData
-          }).then(result => ({ ...result, studentName: student.name }))
-          .catch(e => {
-            console.error(`Failed to get prediction for student ${student.id}:`, e);
-            return null;
-          })
-        );
-        
-        const results = await Promise.all(predictionPromises);
-        const validResults = results.filter((p): p is (NonNullable<typeof p>) => p !== null && p.willBeAbsent);
-        setPredictions(validResults);
-        if (results.some(r => r === null)) {
-            setError("Could not fetch all predictions. The AI model might be temporarily unavailable.");
-        }
-
-      } catch (e) {
-        console.error(e);
-        setError("Could not fetch predictions. The AI model might be temporarily unavailable.");
-        toast({
-            variant: "destructive",
-            title: "Prediction Error",
-            description: "Failed to fetch absence predictions.",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchPredictions();
-  }, [toast, allStudents, courses]);
-  
-  const getIcon = (confidence: number) => {
-    if (confidence > 0.75) return <AlertCircle className="h-5 w-5 text-red-500" />;
-    if (confidence > 0.5) return <AlertCircle className="h-5 w-5 text-yellow-500" />;
-    return <AlertCircle className="h-5 w-5 text-gray-400" />;
-  };
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>AI-Powered Absence Predictions</CardTitle>
-        <CardDescription>Students likely to be absent today based on historical patterns.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="text-center text-muted-foreground">Analyzing patterns...</div>
-        ) : error ? (
-            <div className="text-center text-destructive">{error}</div>
-        ): predictions.length > 0 ? (
-          <ul className="space-y-4">
-            {predictions.map((p, i) => (
-              <li key={i} className="flex items-start gap-4 p-3 bg-secondary rounded-lg">
-                {getIcon(p.confidenceScore)}
-                <div>
-                  <p className="font-semibold">{p.studentName}</p>
-                  <p className="text-sm text-muted-foreground">{p.reason}</p>
-                </div>
-                <div className="ml-auto text-right">
-                  <p className="font-bold text-sm">{(p.confidenceScore * 100).toFixed(0)}%</p>
-                  <p className="text-xs text-muted-foreground">Confidence</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="text-center text-muted-foreground">No absence predictions at this time.</div>
-        )}
-        {error && !isLoading && <div className="text-destructive mt-2">{error}</div>}
-      </CardContent>
-    </Card>
-  );
-};
-
-
 export default function TeacherDashboard() {
   const { toast } = useToast();
   const [allStudents, setAllStudents] = useState<Student[]>([]);
@@ -373,24 +272,13 @@ export default function TeacherDashboard() {
   return (
     <div>
         {teachers.length > 0 && currentTeacherId !== 0 && <TeacherSelector teachers={teachers} currentTeacherId={currentTeacherId} onTeacherChange={setCurrentTeacherId} />}
-        <Tabs defaultValue="attendance">
-        <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="attendance"><ListChecks className="mr-2 h-4 w-4" />Take Attendance</TabsTrigger>
-            <TabsTrigger value="ai"><BrainCircuit className="mr-2 h-4 w-4" />AI Insights</TabsTrigger>
-        </TabsList>
-        <TabsContent value="attendance" className="mt-6">
-            <AttendanceTaker 
-              allStudents={allStudents} 
-              teacherId={currentTeacherId} 
-              courses={courses}
-              onUpdateCourse={handleUpdateCourse}
-              onSaveAttendance={handleSaveAttendance}
-            />
-        </TabsContent>
-        <TabsContent value="ai" className="mt-6">
-            <AIPredictions allStudents={allStudents} courses={courses} />
-        </TabsContent>
-        </Tabs>
+        <AttendanceTaker 
+          allStudents={allStudents} 
+          teacherId={currentTeacherId} 
+          courses={courses}
+          onUpdateCourse={handleUpdateCourse}
+          onSaveAttendance={handleSaveAttendance}
+        />
     </div>
   );
 }

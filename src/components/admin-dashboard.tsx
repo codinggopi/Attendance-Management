@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,11 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart, Users, UserPlus, BookUser, BrainCircuit, AlertCircle, FileText, Pencil, Check, X, PlusCircle, Trash2 } from "lucide-react";
+import { BarChart, Users, UserPlus, BookUser, CheckCircle, XCircle, Clock, AlertCircle, FileText, Pencil, Check, X, PlusCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { Student, Teacher, Course, AttendanceRecord } from '@/lib/types';
-import { predictStudentAbsence } from '@/ai/flows/predict-student-absence';
-import { generateAttendanceSummary } from '@/ai/flows/generate-attendance-summary';
+import type { Student, Teacher, Course, AttendanceRecord, AttendanceStatus } from '@/lib/types';
 import jsPDF from 'jspdf';
 import {
   AlertDialog,
@@ -24,8 +22,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 import * as api from '@/lib/api';
+import { DateRange } from "react-day-picker";
+import { addDays, format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
+
 
 // --- Sub-components for Admin Dashboard ---
 
@@ -456,119 +461,161 @@ const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteCourse, onDe
     );
 };
 
-
-const AiReports = ({students, courses}: {students: Student[], courses: Course[]}) => {
-    const { toast } = useToast();
-    const [predictions, setPredictions] = useState<any[]>([]);
-    const [isPredictionsLoading, setIsPredictionsLoading] = useState(false);
-    const [summary, setSummary] = useState('');
-    const [isSummaryLoading, setIsSummaryLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+const AttendanceManagement = ({ students, courses, attendanceRecords }: { students: Student[], courses: Course[], attendanceRecords: AttendanceRecord[] }) => {
+    const [filteredRecords, setFilteredRecords] = useState<AttendanceRecord[]>(attendanceRecords);
+    const [selectedStudent, setSelectedStudent] = useState<string>("all");
+    const [selectedCourse, setSelectedCourse] = useState<string>("all");
+    const [date, setDate] = React.useState<DateRange | undefined>({
+        from: addDays(new Date(), -7),
+        to: new Date(),
+    });
 
     useEffect(() => {
-        const fetchPredictions = async () => {
-            if (students.length === 0 || courses.length === 0) {
-                setPredictions([]);
-                return;
-            }
-            setIsPredictionsLoading(true);
-            setError(null);
-            try {
-                const historicalData = JSON.stringify([{ date: '2023-10-02', status: 'present' }, { date: '2023-10-04', status: 'absent' }]);
-                const scheduleData = JSON.stringify(courses.map(c => ({ name: c.name })));
-                
-                const results = await Promise.all(
-                    students.slice(0, 5).map(student => 
-                        predictStudentAbsence({ studentId: student.id, historicalAttendanceData: historicalData, currentClassSchedule: scheduleData })
-                            .then(res => ({ ...res, studentName: student.name }))
-                            .catch(e => {
-                                console.error(`Failed to get prediction for student ${student.id}:`, e);
-                                return null; 
-                            })
-                    )
-                );
-                
-                const validResults = results.filter((p): p is (NonNullable<typeof p>) => p !== null && p.willBeAbsent);
-                setPredictions(validResults);
-                if (results.some(r => r === null)) {
-                    setError("Could not fetch all predictions. The AI model might be temporarily unavailable.");
-                }
+        let records = [...attendanceRecords];
 
-            } catch (e) {
-                console.error(e);
-                setError("Could not fetch predictions. The AI model might be temporarily unavailable.");
-                toast({
-                    variant: "destructive",
-                    title: "Prediction Error",
-                    description: "Failed to fetch absence predictions.",
-                });
-            } finally {
-                setIsPredictionsLoading(false);
-            }
-        };
-        fetchPredictions();
-    }, [students, courses, toast]);
+        // Filter by student
+        if (selectedStudent !== "all") {
+            records = records.filter(r => r.studentId === parseInt(selectedStudent, 10));
+        }
 
-    const handleGenerateSummary = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsSummaryLoading(true);
-        setSummary('');
-        try {
-            const { summary: summaryText } = await generateAttendanceSummary({timeFrame: "last week", studentGroup: "all students"});
-            setSummary(summaryText || "Could not generate summary.");
-            
-            if (summaryText) {
-                const doc = new jsPDF();
-                doc.text(summaryText, 10, 10);
-                doc.save("weekly-attendance-summary.pdf");
-            }
+        // Filter by course
+        if (selectedCourse !== "all") {
+            records = records.filter(r => r.courseId === parseInt(selectedCourse, 10));
+        }
 
-        } catch (e) {
-            console.error(e);
-            setSummary("Failed to generate summary. The AI model might be temporarily unavailable.");
-            toast({
-                variant: "destructive",
-                title: "Summary Error",
-                description: "Failed to generate attendance summary.",
+        // Filter by date
+        if (date?.from && date?.to) {
+            records = records.filter(r => {
+                const recordDate = new Date(r.date);
+                return recordDate >= date.from! && recordDate <= date.to!;
             });
-        } finally {
-            setIsSummaryLoading(false);
+        }
+        
+        setFilteredRecords(records.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+
+    }, [selectedStudent, selectedCourse, date, attendanceRecords]);
+    
+    const getStatusBadge = (status: AttendanceStatus) => {
+        switch (status) {
+          case 'present':
+            return <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full"><CheckCircle className="mr-1 h-3 w-3"/>Present</span>;
+          case 'absent':
+            return <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-full"><XCircle className="mr-1 h-3 w-3"/>Absent</span>;
+          case 'late':
+            return <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-yellow-700 bg-yellow-100 rounded-full"><Clock className="mr-1 h-3 w-3"/>Late</span>;
+          default:
+            return <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-full">Unmarked</span>;
         }
     };
 
+
     return (
-         <Card>
+        <Card>
             <CardHeader>
-                <CardTitle>AI Reports & Insights</CardTitle>
-                <CardDescription>Leverage AI to understand and predict attendance patterns.</CardDescription>
+                <CardTitle>Attendance Management</CardTitle>
+                <CardDescription>Filter and view attendance records across the system.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Tabs defaultValue="predictions">
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="predictions"><AlertCircle className="mr-2 h-4 w-4" />Absence Predictions</TabsTrigger>
-                        <TabsTrigger value="summary"><FileText className="mr-2 h-4 w-4" />Generate Summary</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="predictions" className="mt-4">
-                        {isPredictionsLoading ? <div>Loading predictions...</div> : error ? <div className="text-destructive">{error}</div> : predictions.length > 0 ? (
-                            <ul className="space-y-2">
-                                {predictions.map((p, i) => (
-                                    <li key={i} className="flex items-center gap-3 p-2 bg-secondary rounded-md text-sm"><AlertCircle className="h-4 w-4 text-destructive"/><strong>{p.studentName}:</strong> <span className="text-muted-foreground">{p.reason} ({(p.confidenceScore * 100).toFixed(0)}% confident)</span></li>
-                                ))}
-                            </ul>
-                        ) : <div>No high-risk students identified.</div>}
-                         {error && <div className="text-destructive mt-2">{error}</div>}
-                    </TabsContent>
-                    <TabsContent value="summary" className="mt-4">
-                        <form onSubmit={handleGenerateSummary} className="space-y-4">
-                           <Button type="submit" disabled={isSummaryLoading} className="w-full">{isSummaryLoading ? 'Generating...' : 'Generate Weekly Summary & Download PDF'}</Button>
-                        </form>
-                        {summary && <div className="mt-4 p-4 border rounded-md bg-secondary text-sm">{summary}</div>}
-                    </TabsContent>
-                </Tabs>
+                <div className="flex flex-col md:flex-row gap-4 mb-6">
+                    <div className="flex-1">
+                        <Label htmlFor="student-filter">Student</Label>
+                        <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+                            <SelectTrigger id="student-filter">
+                                <SelectValue placeholder="All Students" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Students</SelectItem>
+                                {students.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="flex-1">
+                        <Label htmlFor="course-filter">Course</Label>
+                        <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+                            <SelectTrigger id="course-filter">
+                                <SelectValue placeholder="All Courses" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Courses</SelectItem>
+                                {courses.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="flex-1">
+                        <Label>Date Range</Label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                id="date"
+                                variant={"outline"}
+                                className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !date && "text-muted-foreground"
+                                )}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {date?.from ? (
+                                date.to ? (
+                                    <>
+                                    {format(date.from, "LLL dd, y")} -{" "}
+                                    {format(date.to, "LLL dd, y")}
+                                    </>
+                                ) : (
+                                    format(date.from, "LLL dd, y")
+                                )
+                                ) : (
+                                <span>Pick a date</span>
+                                )}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                initialFocus
+                                mode="range"
+                                defaultMonth={date?.from}
+                                selected={date}
+                                onSelect={setDate}
+                                numberOfMonths={2}
+                            />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                </div>
+                <div className="border rounded-md">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Student</TableHead>
+                                <TableHead>Course</TableHead>
+                                <TableHead>Status</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredRecords.length > 0 ? filteredRecords.map(record => {
+                                const student = students.find(s => s.id === record.studentId);
+                                const course = courses.find(c => c.id === record.courseId);
+                                return (
+                                    <TableRow key={record.id}>
+                                        <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
+                                        <TableCell>{student?.name || 'Unknown'}</TableCell>
+                                        <TableCell>{course?.name || 'Unknown'}</TableCell>
+                                        <TableCell>{getStatusBadge(record.status)}</TableCell>
+                                    </TableRow>
+                                )
+                            }) : (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="h-24 text-center">No records match the current filters.</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
             </CardContent>
         </Card>
-    )
-}
+    );
+};
+
 
 // --- Main Admin Dashboard Component ---
 
@@ -608,7 +655,7 @@ export default function AdminDashboard() {
   
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [toast]);
 
 
   const addStudent = async (studentData: Omit<Student, 'id'>) => {
@@ -735,7 +782,7 @@ export default function AdminDashboard() {
             onDeleteAll={deleteAllCourses}
         />
       </div>
-       <AiReports students={students} courses={courses} />
+       <AttendanceManagement students={students} courses={courses} attendanceRecords={attendanceRecords} />
     </div>
   );
 }
