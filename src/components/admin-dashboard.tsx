@@ -758,7 +758,8 @@ export default function AdminDashboard() {
 
   const addCourse = async (courseData: Omit<Course, 'id' | 'studentIds'>) => {
     try {
-        const newCourse = await api.addCourse(courseData);
+        // ensure studentIds is provided (empty array for a new course) so it matches Omit<Course, 'id'>
+        const newCourse = await api.addCourse({ ...courseData, studentIds: [] });
         setCourses(prev => [...prev, newCourse]);
     } catch (error) {
         toast({ variant: "destructive", title: "Error", description: "Could not add course." });
