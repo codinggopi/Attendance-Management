@@ -14,7 +14,7 @@ from django.db import transaction
 
 User = get_user_model()
 class LoginView(APIView):
-    permission_classes : list[type] = [IsAuthenticated]
+    permission_classes : list[type] = []
     
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
