@@ -9,7 +9,41 @@ import type {
 // const BASE_URL = 'https://t2cl04dd-8000.inc1.devtunnels.ms';
 const BASE_URL = 'https://codinggopi.pythonanywhere.com/api';
 // const BASE_URL = 'http://localhost:8000/api';
- 
+
+
+const authFetch = async (url: string, options: RequestInit = {}) => {
+  let token = localStorage.getItem("access");
+
+  const makeRequest = async (accessToken: string | null) => {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(options.headers as Record<string, string> || {}),
+    };
+
+    if (accessToken) {
+      headers["Authorization"] = `Bearer ${accessToken}`;
+    }
+
+    return fetch(url, {
+      ...options,
+      headers,
+    });
+  };
+
+  let response = await makeRequest(token);
+
+  if (response.status === 401) {
+    const newToken = await refreshAccessToken();
+    if (!newToken) throw new Error("Session expired");
+
+    response = await makeRequest(newToken);
+  }
+
+  return response;
+};
+
+
+/* ================== RESPONSE HANDLER ================== */
 const handleResponse = async (response: Response) => {
   if (!response.ok) {
     const text = await response.text();
@@ -19,16 +53,103 @@ const handleResponse = async (response: Response) => {
   return response.json();
 };
 
+const refreshAccessToken = async (): Promise<string | null> => {
+  const refresh = localStorage.getItem("refresh");
+  if (!refresh) return null;
+
+  const res = await fetch(`${BASE_URL}/token/refresh/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh }),
+  });
+
+  if (!res.ok) {
+    // Refresh token also expired → logout
+    localStorage.clear();
+    window.location.href = "/";
+    return null;
+  }
+
+  const data = await res.json();
+  localStorage.setItem("access", data.access);
+  if (data.refresh) {
+    localStorage.setItem("refresh", data.refresh);
+  }
+  return data.access;
+};
+
+export const resetPassword = async (
+  username: string,
+  newPassword: string
+): Promise<void> => {
+  const response = await authFetch(`${BASE_URL}/reset-password/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      username,
+      new_password: newPassword,
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Reset failed: ${text}`);
+  }
+};
+/* -------------------- AUTH APIs -------------------- */
+
+export type LoginResponse = {
+  access: string;
+  refresh: string;
+  role: "admin" | "teacher" | "student";
+  username: string;
+};
+
+export const loginUser = async (
+  username: string,
+  password: string
+): Promise<LoginResponse> => {
+  const res = await authFetch(`${BASE_URL}/login/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error?.non_field_errors?.[0] || "Login failed");
+  }
+
+  return res.json();
+};
+
+export const logoutfun = async () => {
+  const refresh = localStorage.getItem("refresh");
+  if (!refresh) return;
+
+  await authFetch(`${BASE_URL}/logout/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh }),
+  });
+
+  localStorage.clear();
+  window.location.href = "/";
+};
+
+
 /* -------------------- STUDENT APIs -------------------- */
 export const getStudents = async (): Promise<Student[]> => {
-  const res = await fetch(`${BASE_URL}/students/`);
+  const res = await authFetch(`${BASE_URL}/students/`);
   return handleResponse(res);
 };
 
 export const addStudent = async (
   data: Omit<Student, "id">
 ): Promise<Student> => {
-  const res = await fetch(`${BASE_URL}/students/`, {
+  const res = await authFetch(`${BASE_URL}/students/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -37,7 +158,7 @@ export const addStudent = async (
 };
 
 export const updateStudent = async (student: Student): Promise<Student> => {
-  const res = await fetch(`${BASE_URL}/students/${student.id}/`, {
+  const res = await authFetch(`${BASE_URL}/students/${student.id}/`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(student),
@@ -46,7 +167,7 @@ export const updateStudent = async (student: Student): Promise<Student> => {
 };
 
 export const deleteStudent = async (id: number): Promise<void> => {
-  const res = await fetch(`${BASE_URL}/students/${id}/`, {
+  const res = await authFetch(`${BASE_URL}/students/${id}/`, {
     method: "DELETE",
   });
   return handleResponse(res);
@@ -54,7 +175,7 @@ export const deleteStudent = async (id: number): Promise<void> => {
 
 export const deleteAllStudents = async (): Promise<void> => {
     try {
-        const response = await fetch(`${BASE_URL}/students/all/`, { method: 'DELETE' });
+        const response = await authFetch(`${BASE_URL}/students/all/`, { method: 'DELETE' });
         return handleResponse(response);
     } catch (error) {
         console.error("Failed to delete all students:", error);
@@ -64,15 +185,20 @@ export const deleteAllStudents = async (): Promise<void> => {
 
 
 /* -------------------- TEACHER APIs -------------------- */
+export const getMyTeacherProfile = async (): Promise<Teacher> => {
+  const res = await authFetch(`${BASE_URL}/teachers/me/`);
+  return handleResponse(res);
+};
+
 export const getTeachers = async (): Promise<Teacher[]> => {
-  const res = await fetch(`${BASE_URL}/teachers/`);
+  const res = await authFetch(`${BASE_URL}/teachers/`);
   return handleResponse(res);
 };
 
 export const addTeacher = async (
   data: Omit<Teacher, "id">
 ): Promise<Teacher> => {
-  const res = await fetch(`${BASE_URL}/teachers/`, {
+  const res = await authFetch(`${BASE_URL}/teachers/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -81,7 +207,7 @@ export const addTeacher = async (
 };
 
 export const updateTeacher = async (teacher: Teacher): Promise<Teacher> => {
-  const res = await fetch(`${BASE_URL}/teachers/${teacher.id}/`, {
+  const res = await authFetch(`${BASE_URL}/teachers/${teacher.id}/`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(teacher),
@@ -90,7 +216,7 @@ export const updateTeacher = async (teacher: Teacher): Promise<Teacher> => {
 };
 
 export const deleteTeacher = async (id: number): Promise<void> => {
-  const res = await fetch(`${BASE_URL}/teachers/${id}/`, {
+  const res = await authFetch(`${BASE_URL}/teachers/${id}/`, {
     method: "DELETE",
   });
   return handleResponse(res);
@@ -98,7 +224,7 @@ export const deleteTeacher = async (id: number): Promise<void> => {
 
 export const deleteAllTeachers = async (): Promise<void> => {
     try {
-        const response = await fetch(`${BASE_URL}/teachers/all/`, { method: 'DELETE' });
+        const response = await authFetch(`${BASE_URL}/teachers/all/`, { method: 'DELETE' });
         return handleResponse(response);
     } catch (error) {
         console.error("Failed to delete all teachers:", error);
@@ -108,7 +234,7 @@ export const deleteAllTeachers = async (): Promise<void> => {
 
 /* -------------------- COURSE APIs -------------------- */
 export const getCourses = async (): Promise<Course[]> => {
-  const res = await fetch(`${BASE_URL}/courses/`);
+  const res = await authFetch(`${BASE_URL}/courses/`);
   return handleResponse(res);
 };
 
@@ -117,7 +243,7 @@ export const addCourse = async (
 ): Promise<Course> => {
     console.log("Adding course with data:", data);
     console.log(JSON.stringify(data));
-  const res = await fetch(`${BASE_URL}/courses/`, {
+  const res = await authFetch(`${BASE_URL}/courses/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -126,7 +252,7 @@ export const addCourse = async (
 };
 
 export const updateCourse = async (course: Course): Promise<Course> => {
-  const res = await fetch(`${BASE_URL}/courses/${course.id}/`, {
+  const res = await authFetch(`${BASE_URL}/courses/${course.id}/`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(course),
@@ -135,7 +261,7 @@ export const updateCourse = async (course: Course): Promise<Course> => {
 };
 
 export const deleteCourse = async (id: number): Promise<void> => {
-  const res = await fetch(`${BASE_URL}/courses/${id}/`, {
+  const res = await authFetch(`${BASE_URL}/courses/${id}/`, {
     method: "DELETE",
   });
   return handleResponse(res);
@@ -143,7 +269,7 @@ export const deleteCourse = async (id: number): Promise<void> => {
 
 export const deleteAllCourses = async (): Promise<void> => {
     try {
-        const response = await fetch(`${BASE_URL}/courses/all/`, { method: 'DELETE' });
+        const response = await authFetch(`${BASE_URL}/courses/all/`, { method: 'DELETE' });
         return handleResponse(response);
     } catch (error) {
         console.error("Failed to delete all courses:", error);
@@ -151,32 +277,42 @@ export const deleteAllCourses = async (): Promise<void> => {
     }
 };
 
+/* -------------------- COURSE ENROLL -------------------- */
 
-export const enrollInCourse = async (courseId: number, studentId: number): Promise<Course> => {
-    try {
-        const response = await fetch(`${BASE_URL}/courses/${courseId}/enroll/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ studentId }),
-        });
-        return handleResponse(response);
-    } catch (error) {
-        console.error("Failed to enroll in course:", error);
-        throw error;
+export const enrollStudent = async (
+  courseId: number,
+  studentId: number
+): Promise<void> => {
+  const res = await authFetch(
+    `${BASE_URL}/courses/${courseId}/enroll-student/`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ student_id: studentId }),
     }
-}
+  );
+  await handleResponse(res);
+};
+
+/* -------------------- STUDENT DASHBOARD -------------------- */
+
+export const getMyEnrolledCourses = async (): Promise<Course[]> => {
+  const res = await authFetch(`${BASE_URL}/students/my-courses/`);
+  return handleResponse(res);
+};
+
 
 
 /* -------------------- ATTENDANCE APIs -------------------- */
 export const getAttendanceRecords = async (): Promise<AttendanceRecord[]> => {
-  const res = await fetch(`${BASE_URL}/attendance/`);
+  const res = await authFetch(`${BASE_URL}/attendance/`);
   return handleResponse(res);
 };
 
 export const addAttendanceRecord = async (
   data: Omit<AttendanceRecord, "id">
 ): Promise<AttendanceRecord> => {
-  const res = await fetch(`${BASE_URL}/attendance/`, {
+  const res = await authFetch(`${BASE_URL}/attendance/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -186,7 +322,7 @@ export const addAttendanceRecord = async (
 
 export const addBulkAttendanceRecords = async (records: Omit<AttendanceRecord, 'id'>[]): Promise<void> => {
     try {
-        const response = await fetch(`${BASE_URL}/attendance/bulk/`, {
+        const response = await authFetch(`${BASE_URL}/attendance/bulk/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(records),
@@ -200,20 +336,23 @@ export const addBulkAttendanceRecords = async (records: Omit<AttendanceRecord, '
 
 
 export const updateAttendanceRecord = async (
-  record: AttendanceRecord
-): Promise<AttendanceRecord> => {
-  const res = await fetch(`${BASE_URL}/attendance/${record.id}/`, {
-    method: "PUT",
+  id: number,
+  data: { status: string }
+) => {
+  const res = await authFetch(`${BASE_URL}/attendance/${id}/`, {
+    method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(record),
+    body: JSON.stringify(data),
   });
   return handleResponse(res);
 };
 
+
+
 export const deleteAttendanceRecord = async (
   id: number
 ): Promise<void> => {
-  const res = await fetch(`${BASE_URL}/attendance/${id}/`, {
+  const res = await authFetch(`${BASE_URL}/attendance/${id}/`, {
     method: "DELETE",
   });
   return handleResponse(res);
@@ -221,7 +360,7 @@ export const deleteAttendanceRecord = async (
 
 export const deleteAllAttendanceRecords = async (): Promise<void> => {
     try {
-        const response = await fetch(`${BASE_URL}/attendance/all/`, { method: 'DELETE' });
+        const response = await authFetch(`${BASE_URL}/attendance/all/`, { method: 'DELETE' });
         return handleResponse(response);
     } catch (error) {
         console.error("Failed to delete all attendance records:", error);

@@ -5,23 +5,24 @@ import { UserCog, BookUser, User, GraduationCap } from 'lucide-react';
 const roles = [
   {
     name: 'Admin',
-    href: '/admin',
+    href: '/login/admin',
     description: 'Manage teachers, students, and system settings.',
     icon: <UserCog className="w-12 h-12" />,
   },
   {
     name: 'Teacher',
-    href: '/teacher',
+    href: '/login/teacher',
     description: 'Track attendance and manage your students.',
     icon: <BookUser className="w-12 h-12" />,
   },
   {
     name: 'Student',
-    href: '/student',
+    href: '/login/student',
     description: 'Check-in to your classes and view your attendance.',
     icon: <User className="w-12 h-12" />,
   },
 ];
+
 
 export default function Home() {
   return (
@@ -32,7 +33,7 @@ export default function Home() {
         </div>
         <h1 className="font-headline text-4xl sm:text-5xl md:text-6xl font-bold text-primary">A+ Attendance</h1>
         <p className="mt-4 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
-          The smart, simple, and streamlined way to manage school attendance.
+          The smart, simple, and streamlined way to manage class attendance.
         </p>
       </div>
 

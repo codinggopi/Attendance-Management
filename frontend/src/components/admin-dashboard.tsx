@@ -31,6 +31,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { updateCourse } from '@/lib/api';
 
 
 // --- Sub-components for Admin Dashboard ---
@@ -58,7 +59,7 @@ const StatsCards = ({ studentCount, teacherCount, courseCount, attendanceRecords
                     <div className="text-2xl font-bold">{teacherCount}</div>
                 </CardContent>
             </Card>
-             <Card>
+            <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Total Courses</CardTitle>
                     <BookUser className="h-4 w-4 text-muted-foreground" />
@@ -350,142 +351,280 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
         </Card>
     );
 };
-
-const CourseManagement = ({ teachers, courses, onAddCourse, onDeleteCourse, onDeleteAll }: { teachers: Teacher[], courses: Course[], onAddCourse: (course: Omit<Course, 'id' | 'studentIds'>) => void, onDeleteCourse: (id: number) => void, onDeleteAll: () => void }) => {
+const CourseManagement = ({
+    teachers,
+    courses,
+    onAddCourse,
+    onDeleteCourse,
+    onDeleteAll,
+    onUpdateCourse
+}: {
+    teachers: Teacher[];
+    courses: Course[];
+    onAddCourse: (course: Omit<Course, "id" | "studentIds">) => void;
+    onDeleteCourse: (id: number) => void;
+    onDeleteAll: () => void;
+    onUpdateCourse: (course: Course) => void;
+}) => {
     const { toast } = useToast();
+
+  // ✅ NEW STATES (ONLY FOR EDIT)
+    const [editCourse, setEditCourse] = useState<Course | null>(null);
+    const [editCourseName, setEditCourseName] = useState("");
+    const [editTeacherId, setEditTeacherId] = useState<number | null>(null);
 
     const handleAddCourse = (e: React.FormEvent) => {
         e.preventDefault();
         const formData = new FormData(e.target as HTMLFormElement);
-        const name = formData.get('name') as string;
-        const teacherId = formData.get('teacherId') as string;
+        const name = formData.get("name") as string;
+        const teacherId = formData.get("teacherId") as string;
 
-        if (name && teacherId) {
-            onAddCourse({ name, teacherId: parseInt(teacherId, 10) });
-            toast({
-                title: "Course Added",
-                description: `${name} has been added.`,
-            });
-            (e.target as HTMLFormElement).reset();
-        }
+    if (name && teacherId) {
+        onAddCourse({ name, teacherId: parseInt(teacherId, 10) });
+        toast({
+        title: "Course Added",
+        description: `${name} has been added.`,
+        });
+        (e.target as HTMLFormElement).reset();
+    }
     };
-    
+
     const handleDeleteCourseClick = (courseId: number) => {
         onDeleteCourse(courseId);
         toast({ title: "Course Deleted", description: "The course has been removed." });
-    }
+    };
 
     const handleDeleteAllClick = () => {
         onDeleteAll();
         toast({
-            title: "All Courses Deleted",
-            description: "All course records have been cleared.",
-            variant: "destructive",
+        title: "All Courses Deleted",
+        description: "All course records have been cleared.",
+        variant: "destructive",
+    });
+    };
+
+  // ✅ OPEN EDIT
+    const openEditCourse = (course: Course) => {
+        setEditCourse(course);
+        setEditCourseName(course.name);
+        setEditTeacherId(course.teacherId);
+    };
+
+  // ✅ SAVE EDIT
+    const handleUpdateCourse = async () => {
+        if (!editCourse || editTeacherId === null) return;
+
+    try {
+        const updatedCourse = {
+        ...editCourse,
+        name: editCourseName,
+        teacherId: editTeacherId,
+        };
+
+        await onUpdateCourse(updatedCourse);
+        setEditCourse(null);
+        setEditCourseName("");
+        setEditTeacherId(null);
+
+        toast({
+            title: "Course Updated",
+            description: "Course updated successfully",
+        });
+        setEditCourse(null);
+    } catch {
+        toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update course",
         });
     }
+    };
 
     return (
-        <Card>
-            <CardHeader className="flex flex-row items-start justify-between">
-                <div>
-                    <CardTitle>Course Management</CardTitle>
-                    <CardDescription>Manage and add new courses to the system.</CardDescription>
-                </div>
-                 <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4" /> Delete All</Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete all course data from the application.
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteAllClick}>Continue</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            </CardHeader>
-            <CardContent>
-                <Tabs defaultValue="view">
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="view">View Courses</TabsTrigger>
-                        <TabsTrigger value="add-course">Add Course</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="view" className="mt-4">
-                         <div className="border rounded-md">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Course Name</TableHead>
-                                        <TableHead>Teacher</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {courses.map(course => {
-                                        const teacher = teachers.find(t => t.id === course.teacherId);
-                                        return (
-                                            <TableRow key={course.id}>
-                                                <TableCell>{course.name}</TableCell>
-                                                <TableCell>{teacher?.name || 'N/A'}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>Delete Course?</AlertDialogTitle>
-                                                                <AlertDialogDescription>
-                                                                    Are you sure you want to delete the course "{course.name}"? This action cannot be undone.
-                                                                </AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={() => handleDeleteCourseClick(course.id)}>Delete</AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </TabsContent>
-                    <TabsContent value="add-course" className="mt-4">
-                        <form className="space-y-4" onSubmit={handleAddCourse}>
-                            <div>
-                                <Label htmlFor="course-name">Course Name</Label>
-                                <Input id="course-name" name="name" placeholder="e.g., Introduction to Physics" required />
-                            </div>
-                            <div>
-                                <Label htmlFor="teacherId">Teacher</Label>
-                                <Select name="teacherId" required>
-                                    <SelectTrigger id="teacherId">
-                                        <SelectValue placeholder="Select a teacher" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {teachers.map(teacher => (
-                                            <SelectItem key={teacher.id} value={String(teacher.id)}>
-                                                {teacher.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <Button type="submit" className="w-full">
-                                <PlusCircle className="mr-2 h-4 w-4" /> Add Course
+    <Card>
+        <CardHeader className="flex flex-row items-start justify-between">
+        <div>
+            <CardTitle>Course Management</CardTitle>
+            <CardDescription>Manage and add new courses to the system.</CardDescription>
+        </div>
+
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                <Trash2 className="mr-2 h-4 w-4" /> Delete All
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete all course data.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteAllClick}>
+                Continue
+                </AlertDialogAction>
+            </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        </CardHeader>
+
+        <CardContent>
+        <Tabs defaultValue="view">
+            <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="view">View Courses</TabsTrigger>
+            <TabsTrigger value="add-course">Add Course</TabsTrigger>
+            </TabsList>
+          {/* ================= VIEW COURSES ================= */}
+            <TabsContent value="view" className="mt-4">
+            <div className="border rounded-md">
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Course Name</TableHead>
+                    <TableHead>Teacher</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+
+                <TableBody>
+                    {courses.map(course => {
+                    const teacher = teachers.find(t => t.id === course.teacherId);
+                    return (
+                        <TableRow key={course.id}>
+                        <TableCell>{course.name}</TableCell>
+                        <TableCell>{teacher?.name || "N/A"}</TableCell>
+
+                        <TableCell className="text-right flex justify-end gap-2">
+                          {/* ✏️ EDIT */}
+                            <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEditCourse(course)}
+                            >
+                            <Pencil className="h-4 w-4 text-black" />
                             </Button>
-                        </form>
-                    </TabsContent>
-                </Tabs>
-            </CardContent>
+
+                          {/* 🗑 DELETE */}
+                            <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Course?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Are you sure you want to delete "{course.name}"?
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                    onClick={() => handleDeleteCourseClick(course.id)}
+                                >
+                                    Delete
+                                </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                            </AlertDialog>
+                        </TableCell>
+                        </TableRow>
+                    );
+                    })}
+                </TableBody>
+                </Table>
+            </div>
+            </TabsContent>
+
+          {/* ================= ADD COURSE ================= */}
+            <TabsContent value="add-course" className="mt-4">
+            <form className="space-y-4" onSubmit={handleAddCourse}>
+                <div>
+                <Label>Course Name</Label>
+                <Input name="name"
+                placeholder="Enter Course Name"
+                required
+                className="
+                    text-sm
+                    text-black font-sans
+                    placeholder:text-zinc-800
+                    tracking-wide
+                " />
+                </div>
+
+                <div>
+                <Label>Teacher</Label>
+                <Select name="teacherId" required>
+                    <SelectTrigger>
+                    <SelectValue placeholder="Select a teacher" />
+                    </SelectTrigger>
+                    <SelectContent>
+                    {teachers.map(t => (
+                        <SelectItem key={t.id} value={String(t.id)}>
+                        {t.name}
+                        </SelectItem>
+                    ))}
+                    </SelectContent>
+                </Select>
+                </div>
+
+                <Button type="submit" className="w-full">
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Course
+                </Button>
+            </form>
+            </TabsContent>
+        </Tabs>
+        </CardContent>
+
+      {/* ================= EDIT COURSE POPUP ================= */}
+        <AlertDialog open={!!editCourse} onOpenChange={() => setEditCourse(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>Edit Course</AlertDialogTitle>
+            <AlertDialogDescription>Update course details</AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="space-y-4">
+            <div>
+                <Label>Course Name</Label>
+                <Input
+                value={editCourseName}
+                onChange={e => setEditCourseName(e.target.value)}
+                />
+            </div>
+
+            <div>
+                <Label>Teacher</Label>
+                <Select
+                value={String(editTeacherId)}
+                onValueChange={v => setEditTeacherId(Number(v))}
+                >
+                <SelectTrigger>
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    {teachers.map(t => (
+                    <SelectItem key={t.id} value={String(t.id)}>
+                        {t.name}
+                    </SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
+            </div>
+            </div>
+
+            <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleUpdateCourse}>
+                Save
+            </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+        </AlertDialog>
         </Card>
     );
 };
@@ -649,7 +788,6 @@ const AttendanceManagement = ({ students, courses, attendanceRecords, onDelete, 
                                 <TableHead>Student</TableHead>
                                 <TableHead>Course</TableHead>
                                 <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -784,6 +922,33 @@ export default function AdminDashboard() {
     }
   };
 
+  const updateCourse = async (updatedCourse: Course) => {
+  try {
+    const saved = await api.updateCourse({
+      id: updatedCourse.id,
+      name: updatedCourse.name,
+      teacherId: updatedCourse.teacherId,
+      studentIds: updatedCourse.studentIds ?? [],
+    });
+
+    setCourses(prev =>
+      prev.map(c => (c.id === saved.id ? saved : c))
+    );
+
+    toast({
+      title: "Course Updated",
+      description: "Course updated successfully",
+    });
+  } catch (error) {
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "Failed to update course",
+    });
+  }
+};
+
+
   const deleteStudent = async (studentId: number) => {
     try {
         await api.deleteStudent(studentId);
@@ -891,6 +1056,7 @@ export default function AdminDashboard() {
             onAddCourse={addCourse}
             onDeleteCourse={deleteCourse}
             onDeleteAll={deleteAllCourses}
+            onUpdateCourse={updateCourse}
         />
       </div>
        <AttendanceManagement 
@@ -899,6 +1065,7 @@ export default function AdminDashboard() {
         attendanceRecords={attendanceRecords} 
         onDelete={deleteAttendanceRecord}
         onDeleteAll={deleteAllAttendanceRecords}
+
         />
     </div>
   );

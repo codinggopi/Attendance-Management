@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
   title: 'A+ Attendance',
-  description: 'An intelligent attendance management system.',
+  description: 'An Intelligent Attendance Management System.',
 };
 
 export default function RootLayout({
