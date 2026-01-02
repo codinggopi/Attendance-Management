@@ -5,24 +5,30 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import * as api from "@/lib/api";
 import {Mail, Eye, EyeOff} from "lucide-react";
+import { LoadingButton } from "@/components/ui/loading-button";
 
 export default function StudentLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-
+  const [loading, setLoading] = useState(false);
   const handleLogin = async () => {
     try {
+      setLoading(true);
       const data = await api.loginUser(email, password);
 
       localStorage.setItem("access", data.access);
       localStorage.setItem("refresh", data.refresh);
       localStorage.setItem("role", data.role);
 
-      router.push("/student");
+      // ✅ 2 seconds loading before redirect
+      setTimeout(() => {
+        router.push("/student");
+      }, 2000);
     } catch {
       alert("Invalid credentials");
+      setLoading(false);
     }
   };
 
@@ -100,7 +106,14 @@ export default function StudentLoginPage() {
             className="w-full bg-blue-400 text-white p-2 rounded-md mt-2 hover:bg-blue-500 hover:text-gray-100 font-semibold tracking-widest"
             onClick={handleLogin}
           >
-            L O G I N
+          {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                Logging in...
+              </span>
+            ) : (
+              "L O G I N"
+            )}
           </motion.button>
         </div>
       </motion.div>

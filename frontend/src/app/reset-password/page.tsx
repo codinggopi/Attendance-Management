@@ -10,11 +10,12 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { resetPassword } from "@/lib/api";
 import { Mail, Eye, EyeOff } from "lucide-react";
+import { LoadingButton } from "@/components/ui/loading-button";
+import { title } from "process";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
   const { toast } = useToast();
-
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -119,13 +120,30 @@ export default function ResetPasswordPage() {
 
                 {/* Animated button */}
                 <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.96 }}
-                >
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Resetting..." : "Reset Password"}
-                  </Button>
-                </motion.div>
+  whileHover={!loading ? { scale: 1.02 } : undefined}
+  whileTap={!loading ? { scale: 0.96 } : undefined}
+>
+  <Button
+    type="submit"
+    disabled={loading}
+    className={`w-full flex items-center justify-center gap-2
+      ${loading ? "cursor-not-allowed" : ""}
+    `}
+  >
+    {loading ? (
+      <>
+        <span className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+        Resetting...
+      </>
+    ) : (
+      "Reset Password"
+    )}
+  </Button>
+</motion.div>
+
+
+
+
 
               </form>
             </CardContent>

@@ -5,26 +5,35 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import * as api from "@/lib/api";
 import {Mail, Eye, EyeOff } from "lucide-react";
+import { LoadingButton } from "@/components/ui/loading-button";
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-
+  const [loading, setLoading] = useState(false);
   const handleLogin = async () => {
-    try {
-      const data = await api.loginUser(email, password);
+  try {
+    setLoading(true);
 
-      localStorage.setItem("access", data.access);
-      localStorage.setItem("refresh", data.refresh);
-      localStorage.setItem("role", data.role);
+    const data = await api.loginUser(email, password);
 
+    localStorage.setItem("access", data.access);
+    localStorage.setItem("refresh", data.refresh);
+    localStorage.setItem("role", data.role);
+
+    // ✅ 2 seconds loading before redirect
+    setTimeout(() => {
       router.push("/admin");
-    } catch {
-      alert("Invalid credentials");
-    }
-  };
+    }, 2000);
+
+  } catch {
+    alert("Invalid credentials");
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-700 via-zinc-700 to-slate-700 p-4">
@@ -96,14 +105,18 @@ export default function AdminLoginPage() {
         </div>
 
         {/* Animated Button */}
-        <motion.button
+        <motion.div
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.96 }}
-          className="w-full bg-gray-400 text-gray-100 font-semibold p-2 rounded-md mt-2 hover:bg-zinc-400 hover:text-gray-100 transition-colors tracking-normal"
-          onClick={handleLogin}
         >
-          L O G I N
-        </motion.button>
+          <LoadingButton
+            loading={loading}
+            onClick={handleLogin}
+            className="w-full bg-gray-400 text-gray-100 font-semibold p-2 rounded-md mt-2 hover:bg-zinc-400 hover:text-gray-100 transition-colors tracking-normal"
+          >
+            {loading ? "Logging in..." : "L O G I N"}
+          </LoadingButton>
+          </motion.div>
       </motion.div>
     </div>
   );

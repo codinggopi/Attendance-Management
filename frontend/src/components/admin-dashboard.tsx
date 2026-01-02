@@ -12,7 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Users, UserPlus, BookUser, CheckCircle, XCircle, Clock, AlertCircle, FileText, Pencil, Check, X, PlusCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Student, Teacher, Course, AttendanceRecord, AttendanceStatus } from '@/lib/types';
-import jsPDF from 'jspdf';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -696,7 +695,7 @@ const AttendanceManagement = ({ students, courses, attendanceRecords, onDelete, 
                     <CardTitle>Attendance Management</CardTitle>
                     <CardDescription>Filter and view attendance records across the system.</CardDescription>
                 </div>
-                 <AlertDialog>
+                <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4" /> Delete All</Button>
                     </AlertDialogTrigger>

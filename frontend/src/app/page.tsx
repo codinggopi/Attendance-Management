@@ -18,7 +18,7 @@ const roles = [
   {
     name: 'Student',
     href: '/login/student',
-    description: 'Check-in to your classes and view your attendance.',
+    description: 'Login to your class and view your attendance.',
     icon: <User className="w-12 h-12" />,
   },
 ];
