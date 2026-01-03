@@ -1,5 +1,32 @@
 from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.base_user import BaseUserManager
 from django.db import models
+
+class CustomUserManager(BaseUserManager):
+    use_in_migrations = True
+
+    def create_user(self, username, email=None, password=None, **extra_fields):
+        if not username:
+            raise ValueError('The given username must be set')
+        email = self.normalize_email(email)
+        username=self.normalize_email(username)
+        user = self.model(username=username, email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, username, email=None, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('role', 'admin')
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+
+        return self.create_user(username, email, password, **extra_fields)
+
 
 class User(AbstractUser):
     ROLE_CHOICES = (
@@ -9,6 +36,8 @@ class User(AbstractUser):
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="student")
 
+    objects = CustomUserManager()
+
 class Student(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="student")
     name = models.CharField(max_length=100)
@@ -16,7 +45,6 @@ class Student(models.Model):
     def __str__(self):
         return self.name
 
-from django.conf import settings
 
 class Teacher(models.Model):
     user = models.OneToOneField(User,

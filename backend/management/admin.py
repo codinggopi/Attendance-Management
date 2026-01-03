@@ -29,9 +29,10 @@ class StudentAdmin(admin.ModelAdmin):
     list_display = ("name", "dept", "get_email")
     search_fields = ("name",  "dept", "user__email")
 
+    @admin.display(description="Email")
     def get_email(self, obj):
         return obj.user.email
-    get_email.short_description = "Email"
+    
 
 # -------------------------
 # Teacher Admin
@@ -40,10 +41,11 @@ class StudentAdmin(admin.ModelAdmin):
 class TeacherAdmin(admin.ModelAdmin):
     list_display = ("id","name", "get_email")
 
+    @admin.display(description="Email")
     def get_email(self, obj):
         return obj.user.email
     
-    get_email.short_description = "Email"
+    
 
 # -------------------------
 # Course Admin
