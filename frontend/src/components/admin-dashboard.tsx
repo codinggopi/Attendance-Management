@@ -109,9 +109,10 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
         const formData = new FormData(e.target as HTMLFormElement);
         const name = formData.get('name') as string;
         const email = formData.get('email') as string;
+        const dept = formData.get('dept') as string;
 
-        if (name && email) {
-            onAddTeacher({ name, email });
+        if (name && email && dept) {
+            onAddTeacher({ name, email, dept });
             toast({
                 title: "Teacher Added",
                 description: `${name} has been added to the system.`,
@@ -206,7 +207,7 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
                                     <AlertDialogHeader>
                                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        This action cannot be undone. This will permanently delete all teacher data.
+                                        This action cannot be undone. This will permanently delete all teachers data.
                                     </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
@@ -219,7 +220,7 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
                         <div className="border rounded-md mb-4">
                             <Table>
                                 <TableHeader>
-                                    <TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead className="text-right">Actions</TableHead></TableRow>
+                                    <TableRow><TableHead>Name</TableHead><TableHead>Department</TableHead><TableHead>Email</TableHead><TableHead className="text-right">Actions</TableHead></TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {teachers.map(t => (
@@ -227,6 +228,7 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
                                             {editingTeacherId === t.id ? (
                                                 <>
                                                     <TableCell><Input value={editedTeacher.name} onChange={e => setEditedTeacher({ ...editedTeacher, name: e.target.value })} /></TableCell>
+                                                    <TableCell><Input value={editedTeacher.dept} onChange={e => setEditedTeacher({ ...editedTeacher, dept: e.target.value })} /></TableCell>
                                                     <TableCell><Input type="email" value={editedTeacher.email} onChange={e => setEditedTeacher({ ...editedTeacher, email: e.target.value })} /></TableCell>
                                                     <TableCell className="text-right">
                                                         <Button variant="ghost" size="icon" onClick={() => handleSaveTeacher()}><Check className="h-4 w-4" /></Button>
@@ -237,6 +239,7 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
                                                 <>
                                                     <TableCell>{t.name}</TableCell>
                                                     <TableCell>{t.email}</TableCell>
+                                                    <TableCell>{t.dept || 'N/A'}</TableCell>
                                                     <TableCell className="text-right">
                                                         <Button variant="ghost" size="icon" onClick={() => handleEditTeacher(t)}><Pencil className="h-4 w-4" /></Button>
                                                         <AlertDialog>
@@ -337,12 +340,18 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
                     </TabsContent>
                     <TabsContent value="add-student" className="mt-4">
                         <form className="space-y-4" onSubmit={handleAddStudent}>
-                            <Input name="name" placeholder="Student Name" required /><Input name="email" type="email" placeholder="Student Email" required /><Input name="dept" placeholder="Department" required /><Button type="submit" className="w-full">Add Student</Button>
+                            <Input name="name" placeholder="Student Name" required />
+                            <Input name="email" type="email" placeholder="Student Email" required />
+                            <Input name="dept" placeholder="Department" required />
+                            <Button type="submit" className="w-full">Add Student</Button>
                         </form>
                     </TabsContent>
                     <TabsContent value="add-teacher" className="mt-4">
                         <form className="space-y-4" onSubmit={handleAddTeacher}>
-                            <Input name="name" placeholder="Teacher Name" required /><Input name="email" type="email" placeholder="Teacher Email" required /><Button type="submit" className="w-full">Add Teacher</Button>
+                            <Input name="name" placeholder="Teacher Name" required />
+                            <Input name="email" type="email" placeholder="Teacher Email" required />
+                            <Input name="dept" placeholder="Department" required />
+                            <Button type="submit" className="w-full">Add Teacher</Button>
                         </form>
                     </TabsContent>
                 </Tabs>
@@ -545,7 +554,7 @@ const CourseManagement = ({
                 <div>
                 <Label>Course Name</Label>
                 <Input name="name"
-                placeholder="Enter Course Name"
+                placeholder="Enter Course Name "
                 required
                 className="
                     text-sm

@@ -67,10 +67,11 @@ class StudentSerializer(serializers.ModelSerializer):
 
 class TeacherSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source="user.email")
+    # dept = serializers.CharField(max_length=100, allow_blank=True)
 
     class Meta:
         model = Teacher
-        fields = ["id", "name", "email"]
+        fields = ["id", "name", "dept", "email"]
 
     def create(self, validated_data):
         user_data = validated_data.pop("user")
@@ -89,10 +90,10 @@ class TeacherSerializer(serializers.ModelSerializer):
                 role="teacher"
         )
 
-        teacher = Teacher.objects.create(
-            user=user,
-            **validated_data
-        )
+            teacher = Teacher.objects.create(
+                user=user,
+                **validated_data
+            )
         return teacher
     
     def update(self, instance, validated_data):
@@ -100,6 +101,8 @@ class TeacherSerializer(serializers.ModelSerializer):
 
         # 🔁 Update Teacher fields
         instance.name = validated_data.get("name", instance.name)
+        instance.dept = validated_data.get("dept", instance.dept)
+
         instance.save()
 
         # 🔁 Update User email (if provided)

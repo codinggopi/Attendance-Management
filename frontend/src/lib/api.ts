@@ -183,6 +183,14 @@ export const deleteAllStudents = async (): Promise<void> => {
         throw error;
     }
 };
+export const deleteAttendanceByCourse = async (courseId: number) => {
+  const res = await authFetch(
+    `${BASE_URL}/attendance/by-course/${courseId}/`,
+    { method: "DELETE" }
+  );
+  return handleResponse(res);
+};
+
 
 
 /* -------------------- TEACHER APIs -------------------- */
@@ -361,8 +369,8 @@ export const deleteAttendanceRecord = async (
 
 export const deleteAllAttendanceRecords = async (): Promise<void> => {
     try {
-        const response = await authFetch(`${BASE_URL}/attendance/all/`, { method: 'DELETE' });
-        return handleResponse(response);
+        const res = await authFetch(`${BASE_URL}/attendance/all/`, { method: 'DELETE' });
+        return handleResponse(res);
     } catch (error) {
         console.error("Failed to delete all attendance records:", error);
         throw error;

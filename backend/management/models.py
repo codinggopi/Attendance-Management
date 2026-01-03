@@ -21,9 +21,11 @@ from django.conf import settings
 class Teacher(models.Model):
     user = models.OneToOneField(User,
         on_delete=models.CASCADE,
-        related_name="teacher_profile"
+        related_name="teacher"
     )
     name = models.CharField(max_length=100)
+    # email = models.EmailField(max_length=100,default="email@example.com")
+    dept = models.CharField(max_length=100)
 
     def __str__(self):
         return self.name
@@ -47,7 +49,9 @@ class AttendanceRecord(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     date = models.DateField()
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES)
+    status = models.CharField(max_length=10)
+    class Meta:
+        unique_together = ('student', 'course', 'date')
 
     def __str__(self):
         return f"{self.student.name} - {self.course.name} - {self.date}"

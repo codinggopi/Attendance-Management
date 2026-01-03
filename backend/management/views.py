@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.exceptions import TokenError
 from django.db import transaction
+from rest_framework.exceptions import ValidationError
 
 
 
@@ -119,9 +120,6 @@ class StudentViewSet(viewsets.ModelViewSet):
         student = Student.objects.get(user=request.user)
         serializer = CourseSerializer(student.courses.all(), many=True)
         return Response(serializer.data)
-
-    
-    
 
 class TeacherViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -249,39 +247,41 @@ class AttendanceRecordViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        
 
-        # Admin → see all attendance records
         if user.role == "admin":
             return AttendanceRecord.objects.all()
 
-
-        # Teacher → see attendance records for their courses
         if user.role == "teacher":
-            try:
-                teacher = Teacher.objects.get(user=user)
-                return AttendanceRecord.objects.filter(course__teacher=teacher)
-            except Teacher.DoesNotExist:
-                return AttendanceRecord.objects.none()
+            teacher = Teacher.objects.get(user=user)
+            return AttendanceRecord.objects.filter(course__teacher=teacher)
 
-        # Student → see ONLY their own attendance records
         if user.role == "student":
-            try:
-                student = Student.objects.get(user=user)
-                return AttendanceRecord.objects.filter(student=student)
-            except Student.DoesNotExist:
-                return AttendanceRecord.objects.none()
+            student = Student.objects.get(user=user)
+            return AttendanceRecord.objects.filter(student=student)
 
-        # Others → no access (optional)
         return AttendanceRecord.objects.none()
 
-    @action(detail=False, methods=['post'], url_path='bulk')
+    def create(self, request, *args, **kwargs):
+        student = request.data.get("student")
+        course = request.data.get("course")
+        date = request.data.get("date")
+
+        if AttendanceRecord.objects.filter(
+            student=student, course=course, date=date
+        ).exists():
+            raise ValidationError(
+                "Attendance already exists for this student, course and date"
+            )
+
+        return super().create(request, *args, **kwargs)
+
+    @action(detail=False, methods=["post"], url_path="bulk")
     def bulk_create(self, request):
         serializer = self.get_serializer(data=request.data, many=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
+    # ✅ ADMIN → DELETE ALL ATTENDANCE
     @action(detail=False, methods=["delete"], url_path="all")
     def delete_all(self, request):
         if request.user.role != "admin":
@@ -289,7 +289,25 @@ class AttendanceRecordViewSet(viewsets.ModelViewSet):
 
         AttendanceRecord.objects.all().delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
+    # ✅ TEACHER → DELETE ATTENDANCE BY COURSE
+    @action(
+        detail=False,
+        methods=["delete"],
+        url_path=r"by-course/(?P<course_id>\d+)"
+    )
+    def delete_by_course(self, request, course_id=None):
+        if request.user.role != "teacher":
+            return Response({"detail": "Not allowed"}, status=403)
+
+        teacher = Teacher.objects.get(user=request.user)
+
+        AttendanceRecord.objects.filter(
+            course__id=course_id,
+            course__teacher=teacher
+        ).delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 # This new ViewSet is needed to handle the "deleteAllUsers" call from the frontend
 class UserViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]

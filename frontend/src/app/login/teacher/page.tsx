@@ -13,7 +13,9 @@ export default function TeacherLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const handleLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
     try {
       setLoading(true);
       const data = await api.loginUser(email, password);
@@ -51,76 +53,82 @@ export default function TeacherLoginPage() {
         >
           Teacher Login
         </motion.h2>
+<form onSubmit={handleLogin}>
 
-{/* Email */}
-<div className="relative">
-  <input
-    type="email"
-    placeholder="Email"
-    className="w-full border rounded-md p-2 
-      focus:ring-1 outline-none focus:ring-green-300 transition-colors
-    hover:border-emerald-500 border-emerald-200"
-    value={email}
-    onChange={(e) => setEmail(e.target.value)}
-  />
+  {/* Email */}
+  <div className="relative">
+    <input
+      type="email"
+      required
+      placeholder="Email"
+      className="w-full border rounded-md p-2 
+        focus:ring-1 outline-none focus:ring-green-300 transition-colors
+        hover:border-emerald-500 border-emerald-200"
+      value={email}
+      onChange={(e) => setEmail(e.target.value)}
+    />
 
-  <Mail
-    size={18}
-    className="absolute right-3 top-1/2 -translate-y-1/2 
-      text-emerald-400"
-  />
-</div>
+    <Mail
+      size={18}
+      className="absolute right-3 top-1/2 -translate-y-1/2 
+        text-emerald-400"
+    />
+  </div>
 
-        {/* Password */}
-<div className="relative">
-  <input
-    type={showPassword ? "text" : "password"}
-    placeholder="Password"
-    className="w-full border rounded-md p-2 
-      focus:ring-1 outline-none focus:ring-green-300 transition-colors
-    hover:border-emerald-500 border-emerald-200"
-    value={password}
-    onChange={(e) => setPassword(e.target.value)}
-  />
+  {/* Password */}
+  <div className="relative mt-4">
+    <input
+      type={showPassword ? "text" : "password"}
+      required
+      placeholder="Password"
+      className="w-full border rounded-md p-2 
+        focus:ring-1 outline-none focus:ring-green-300 transition-colors
+        hover:border-emerald-500 border-emerald-200"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+    />
 
-  <button
-    type="button"
-    onClick={() => setShowPassword(!showPassword)}
-    className="absolute right-3 top-1/2 -translate-y-1/2 
-      text-emerald-400 hover:text-emerald-500 transition"
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="absolute right-3 top-1/2 -translate-y-1/2 
+        text-emerald-400 hover:text-emerald-500 transition"
+    >
+      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+    </button>
+  </div>
+
+  {/* Reset password */}
+  <div className="text-right mt-2">
+    <button
+      type="button"
+      onClick={() => router.push("/reset-password")}
+      className="text-sm text-green-500 font-serif hover:underline"
+    >
+      Forgot password?
+    </button>
+  </div>
+
+  {/* Animated Login Button */}
+  <motion.button
+    type="submit"          // 🔥 IMPORTANT
+    whileHover={{ scale: 1.02 }}
+    whileTap={{ scale: 0.96 }}
+    disabled={loading}
+    className="w-full bg-emerald-300 text-white hover:text-emerald-500 
+      font-semibold p-2 rounded-md mt-2 tracking-widest"
   >
-    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-  </button>
-</div>
+    {loading ? (
+      <span className="flex items-center justify-center gap-2">
+        <span className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+        Logging in...
+      </span>
+    ) : (
+      "L O G I N"
+    )}
+  </motion.button>
 
-
-        {/* Reset password */}
-        <div className="text-right mt-2">
-          <button
-            type="button"
-            onClick={() => router.push("/reset-password")}
-            className="text-sm text-green-500 font-serif hover:underline cursor-pointer"
-          >
-            Forgot password?
-          </button>
-        </div>
-
-        {/* Animated Login Button */}
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.96 }}
-          className="w-full bg-emerald-300 text-white hover:text-emerald-500 font-semibold p-2 rounded-md mt-2 tracking-widest"
-          onClick={handleLogin}
-        >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-              Logging in...
-            </span>
-          ) : (
-            "L O G I N"
-          )}
-        </motion.button>
+</form>
       </motion.div>
     </div>
   );

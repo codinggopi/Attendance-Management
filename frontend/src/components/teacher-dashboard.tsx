@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,9 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import * as api from '@/lib/api';
+import { Trash2 } from "lucide-react";
+import { isToday } from 'date-fns';
+
 
 /* ================= ATTENDANCE TAKER ================= */
 const AttendanceTaker = ({
@@ -52,6 +55,7 @@ const AttendanceTaker = ({
   const [editStatus, setEditStatus] = useState<AttendanceStatus>("present");
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
   const [attendanceHistory, setAttendanceHistory] = useState<any[]>([]);
+  const today = new Date().toISOString().split("T")[0];
   const loadAttendanceHistory = async (courseId: number) => {
   try {
     const records = await api.getAttendanceRecords();
@@ -115,15 +119,39 @@ const AttendanceTaker = ({
     setAttendance(prev => ({ ...prev, [studentId]: status }));
   };
 
-  const handleSubmit = async () => {
+const handleSubmit = async () => {
   if (!selectedCourseId) return;
 
-  await onSaveAttendance(attendance, selectedCourseId);
+  const records = Object.entries(attendance)
+    .filter(([studentId, status]) =>
+      status !== "unmarked" &&
+      !alreadyMarkedStudentIds.includes(Number(studentId))
+    )
+    .map(([studentId, status]) => ({
+      studentId: Number(studentId),
+      courseId: selectedCourseId,
+      date: today,
+      status,
+    }));
+
+  // 🚫 If nothing to save
+  if (records.length === 0) {
+    toast({
+      variant: "destructive",
+      title: "Attendance already marked",
+      description: "You can edit it in Attendance Details section",
+    });
+    return;
+  }
+
+  await api.addBulkAttendanceRecords(records);
 
   toast({ title: "Attendance Submitted" });
 
-    loadAttendanceHistory(selectedCourseId); // ✅ correct place
-  };
+  loadAttendanceHistory(selectedCourseId);
+};
+
+
 
 
   const toggleStudent = (id: number) => {
@@ -133,6 +161,12 @@ const AttendanceTaker = ({
       : [...prev, id]
   );
 };
+
+const alreadyMarkedStudentIds = useMemo(() => {
+  return attendanceHistory
+    .filter(r => r.date === today)
+    .map(r => r.studentId) ?? [];
+}, [attendanceHistory, today]);
 
 
 
@@ -234,6 +268,7 @@ const AttendanceTaker = ({
         <TableCell>
           <RadioGroup
             value={attendance[student.id]}
+            disabled={alreadyMarkedStudentIds.includes(student.id)}
             onValueChange={(v) =>
               handleAttendanceChange(student.id, v as AttendanceStatus)
             }
@@ -269,32 +304,57 @@ const AttendanceTaker = ({
 
       {attendanceHistory.length > 0 && (
         <div className="border rounded-md p-4">
-          <div className="flex items-center justify-between  mb-3">
-            <h3 className="font-semibold  text-center ">Attendance Details</h3>
-            <Select
-              value={statusFilter}
-              onValueChange={(v) =>
-                setStatusFilter(v as "all" | "present" | "absent" | "late")
-              }
-            >
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Filter Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="present">Present</SelectItem>
-                <SelectItem value="absent">Absent</SelectItem>
-                <SelectItem value="late">Late</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+<div className="flex items-center justify-between mb-4">
+  <h3 className="font-semibold text-lg">Attendance Details</h3>
+
+  <div className="flex items-center gap-4">
+    {/* FILTER */}
+    <Select
+      value={statusFilter}
+      onValueChange={(v) =>
+        setStatusFilter(v as "all" | "present" | "absent" | "late")
+      }
+    >
+      <SelectTrigger className="w-40">
+        <SelectValue placeholder="Filter Status" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">All</SelectItem>
+        <SelectItem value="present">Present</SelectItem>
+        <SelectItem value="absent">Absent</SelectItem>
+        <SelectItem value="late">Late</SelectItem>
+      </SelectContent>
+    </Select>
+    {/* DELETE ALL */}
+<Button
+  variant="destructive"
+  className="flex items-center gap-2"
+  disabled={attendanceHistory.length === 0}
+  onClick={async () => {
+    if (!selectedCourseId) return;
+
+    if (!confirm("Delete ALL attendance for this course?")) return;
+
+    await api.deleteAttendanceByCourse(selectedCourseId);
+
+    toast({ title: "Course attendance deleted" });
+    loadAttendanceHistory(selectedCourseId);
+  }}
+>
+  <Trash2 size={15} />
+  Delete All
+</Button>
+
+  </div>
+</div>
+
 <Table>
   <TableHeader>
     <TableRow>
       <TableHead>Student</TableHead>
       <TableHead>Date</TableHead>
       <TableHead>Status</TableHead>
-      <TableHead className="text-right">Action</TableHead>
+      <TableHead className='text-balance'>Actions</TableHead>
     </TableRow>
   </TableHeader>
 
@@ -330,38 +390,71 @@ const AttendanceTaker = ({
         </TableCell>
 
         {/* ACTION */}
-        <TableCell className="text-right">
-          {editingRecordId === record.id ? (
-            <Button
-              size="sm"
-              onClick={async () => {
-                await api.updateAttendanceRecord(record.id, {
-                  status: editStatus,
-                });
+<TableCell className="text-right">
+  <div className="flex justify items-center gap-4">
 
-                toast({ title: "Attendance Updated" });
-                setEditingRecordId(null);
-                loadAttendanceHistory(selectedCourseId!);
-              }}
-            >
-              Save
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setEditingRecordId(record.id);
-                setEditStatus(record.status);
-              }}
-            >
-              Edit
-            </Button>
-          )}
-        </TableCell>
-      </TableRow>
-    ))}
-  </TableBody>
+    {/* EDIT */}
+    {editingRecordId === record.id ? (
+      <Button
+        size="icon"
+        className="px-4"
+        onClick={async () => {
+          await api.updateAttendanceRecord(record.id, {
+            status: editStatus,
+          });
+
+          /* ✅ UPDATE attendance state ALSO */
+          setAttendance(prev => ({
+            ...prev,
+            [record.studentId]: editStatus,
+          }));
+
+          toast({ title: "Attendance Updated" });
+          setEditingRecordId(null);
+          loadAttendanceHistory(selectedCourseId!);
+        }}
+      >
+        Save
+      </Button>
+    ) : (
+      <Button
+        size="icon"
+        variant="ghost"
+      className="text-blue-500 hover:bg-blue-100 hover:text-blue-600"
+        onClick={() => {
+          setEditingRecordId(record.id);
+          setEditStatus(record.status);
+        }}
+      >
+        <Pencil size={18} />
+      </Button>
+    )}
+
+    {/* DELETE */}
+    <Button
+      size="icon"
+      variant="ghost"
+      className="text-red-500 hover:bg-red-100 hover:text-red-600"
+      onClick={async () => {
+        if (!confirm("Delete this attendance record?")) return;
+
+        await api.deleteAttendanceRecord(record.id);
+
+        toast({ title: "Attendance Deleted" });
+
+        setAttendanceHistory([]);
+        await loadAttendanceHistory(selectedCourseId!);
+      }}
+    >
+      <Trash2 size={18} />
+    </Button>
+
+  </div>
+</TableCell>
+
+</TableRow>
+))}
+</TableBody>
 </Table>
         </div>
       )}
@@ -426,18 +519,18 @@ export default function TeacherDashboard() {
   }
   };
 
-
-
   const handleSaveAttendance = async (
     attendance: Record<string, AttendanceStatus>,
     courseId: number
   ) => {
+
     const records = Object.entries(attendance)
-      .filter(([, status]) => status !== "unmarked")
+      .filter(([studentId, status]) => 
+        status !== "unmarked" && !alreadyMarkedStudentIds.includes(Number(studentId)))
       .map(([studentId, status]) => ({
         studentId: Number(studentId),
         courseId,
-        date: new Date().toISOString().split("T")[0],
+        date: today,
         status,
       }));
 

@@ -13,7 +13,9 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const handleLogin = async () => {
+
+const handleLogin = async (e?: React.FormEvent) => {
+  if (e) e.preventDefault(); 
   try {
     setLoading(true);
 
@@ -22,8 +24,6 @@ export default function AdminLoginPage() {
     localStorage.setItem("access", data.access);
     localStorage.setItem("refresh", data.refresh);
     localStorage.setItem("role", data.role);
-
-    // ✅ 2 seconds loading before redirect
     setTimeout(() => {
       router.push("/admin");
     }, 2000);
@@ -55,69 +55,77 @@ export default function AdminLoginPage() {
           Admin Login
         </motion.h2>
 
-{/* Email */}
-<div className="relative">
-  <input
-    type="email"
-    placeholder="Email"
-    className="placeholder:text-gray-500 w-full border rounded-md p-2 focus:ring-1 focus:ring-zinc-300 border-slate-800 outline-none"
-    value={email}
-    onChange={(e) => setEmail(e.target.value)}
-  />
+<form onSubmit={handleLogin} className="space-y-4">
+  
+  {/* Email */}
+  <div className="relative">
+    <input
+      type="email"
+      required
+      placeholder="Email"
+      disabled={loading}
+      className="placeholder:text-gray-500 w-full border rounded-md p-2
+        focus:ring-1 focus:ring-zinc-300 border-slate-800 outline-none"
+      value={email}
+      onChange={(e) => setEmail(e.target.value)}
+    />
 
-  <Mail
-    size={18}
-    className="absolute right-3 top-1/2 -translate-y-1/2 
-    text-gray-500 hover:text-zinc-500 transition"
-  />
-</div>
+    <Mail
+      size={18}
+      className="absolute right-3 top-1/2 -translate-y-1/2 
+      text-gray-500 hover:text-zinc-500 transition"
+    />
+  </div>
 
-        {/* Password + Eye */}
-        <div className="relative">
-          <input
-            type={showPassword ? "text" : "password"}
-            placeholder="Password"
-            className="w-full p-2 border rounded-md
-              placeholder-gray-500 focus:ring-1 focus:ring-zinc-300 border-slate-800 outline-none"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+  {/* Password + Eye */}
+  <div className="relative">
+    <input
+      type={showPassword ? "text" : "password"}
+      placeholder="Password"
+      required
+      disabled={loading}
+      className="w-full p-2 border rounded-md
+        placeholder-gray-500 focus:ring-1 focus:ring-zinc-300 border-slate-800 outline-none"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+    />
 
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 
-              text-gray-500 hover:text-zinc-500 transition"
-          >
-            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-          </button>
-        </div>
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="absolute right-3 top-1/2 -translate-y-1/2 
+        text-gray-500 hover:text-zinc-500 transition"
+    >
+      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+    </button>
+  </div>
 
-        {/* Reset password */}
-        <div className="text-right mt-2">
-          <button
-            type="button"
-            onClick={() => router.push("/reset-password")}
-            className="text-sm text-gray-200 hover:underline cursor-pointer font-semibold"
-          >
-            Forgot password?
-          </button>
-        </div>
+  {/* Reset password */}
+  <div className="text-right mt-2">
+    <button
+      type="button"
+      onClick={() => router.push("/reset-password")}
+      className="text-sm text-gray-200 hover:underline cursor-pointer font-semibold"
+    >
+      Forgot password?
+    </button>
+  </div>
 
-        {/* Animated Button */}
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.96 }}
-        >
-          <LoadingButton
-            loading={loading}
-            onClick={handleLogin}
-            className="w-full bg-gray-400 text-gray-100 font-semibold p-2 rounded-md mt-2 hover:bg-zinc-400 hover:text-gray-100 transition-colors tracking-normal"
-          >
-            {loading ? "Logging in..." : "L O G I N"}
-          </LoadingButton>
-          </motion.div>
-      </motion.div>
+  {/* Login Button */}
+  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.96 }}>
+    <LoadingButton
+      type="submit"          // 🔥 MOST IMPORTANT
+      loading={loading}
+      className="w-full bg-gray-400 text-gray-100 font-semibold p-2
+        rounded-md mt-2 hover:bg-zinc-400 transition"
+    >
+      {loading ? "Logging in..." : "L O G I N"}
+    </LoadingButton>
+  </motion.div>
+
+</form>
+      </motion.div> 
     </div>
   );
 }
+

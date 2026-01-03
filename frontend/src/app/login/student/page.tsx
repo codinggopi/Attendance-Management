@@ -13,7 +13,10 @@ export default function StudentLoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const handleLogin = async () => {
+
+  const handleLogin = async (e?: React.FormEvent) => {
+    if (e?.preventDefault()) return;
+
     try {
       setLoading(true);
       const data = await api.loginUser(email, password);
@@ -51,71 +54,81 @@ export default function StudentLoginPage() {
         >
           Student Login
         </motion.h2>
-
         {/* Inputs */}
-        <div className="space-y-4">
-          <div className="relative">
-            <input
-              type="email"
-              placeholder="Email"
-              className="placeholder:text-gray-500 w-full border rounded-md p-2 focus:ring-1 focus:ring-blue-300 border-blue-500 outline-none hover:shadow-xl"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div className="space-y-4">
+            {/* Email */}
+            <div className="relative">
+              <input
+                type="email"
+                required
+                disabled={loading}
+                placeholder="Email"
+                className="placeholder:text-gray-500 w-full border rounded-md p-2
+                focus:ring-1 focus:ring-blue-300 border-blue-500 outline-none hover:shadow-xl"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <Mail
+                size={18}
+                className="absolute right-3 top-1/2 -translate-y-1/2 
+                text-blue-500 hover:text-blue-700 transition"
+              />
+            </div>
+            {/* Password */}
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                required
+                disabled={loading}
+                className="w-full border rounded-md p-2
+                focus:ring-1 focus:ring-blue-300 border-blue-500 outline-none hover:shadow-xl"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 
+                text-blue-500 hover:text-blue-700 transition"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
 
-            <Mail
-              size={18}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-500 hover:text-blue-700 transition"
-            />
-          </div>
+            {/* Reset password */}
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => router.push("/reset-password")}
+                className="text-sm text-blue-400 hover:underline font-semibold"
+              >
+                Forgot password ?
+              </button>
+            </div>
 
-          {/* Password with Eye icon */}
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Password"
-              className="w-full border rounded-md p-2 text-md text-bl
-              focus:ring-1 focus:ring-blue-300 border-blue-500 outline-none hover:shadow-xl"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-500 hover:text-blue-700 transition"
+            {/* Login Button */}
+            <motion.button
+              type="submit"        // 🔥 IMPORTANT
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.96 }}
+              disabled={loading}
+              className="w-full bg-blue-400 text-white p-2 rounded-md mt-2
+              hover:bg-blue-500 font-semibold tracking-widest"
             >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  Logging in...
+                </span>
+              ) : (
+                "L O G I N"
+              )}
+            </motion.button>
           </div>
-          {/* Reset password */}
-          <div className="text-right">
-            <button
-              type="button"
-              onClick={() => router.push("/reset-password")}
-              className="text-sm text-blue-400/100 hover:underline cursor-pointer font-semibold"
-            >
-              Forgot password ?
-            </button>
-          </div>
+        </form>
 
-          {/* Animated button */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.96 }}
-            className="w-full bg-blue-400 text-white p-2 rounded-md mt-2 hover:bg-blue-500 hover:text-gray-100 font-semibold tracking-widest"
-            onClick={handleLogin}
-          >
-          {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                Logging in...
-              </span>
-            ) : (
-              "L O G I N"
-            )}
-          </motion.button>
-        </div>
       </motion.div>
     </div>
   );
