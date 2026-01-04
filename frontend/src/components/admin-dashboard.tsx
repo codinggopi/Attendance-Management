@@ -1,6 +1,6 @@
 
 "use client";
-
+import { ThemeToggle } from '@/components/theme-toggle';
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -238,8 +238,8 @@ const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpda
                                             ) : (
                                                 <>
                                                     <TableCell>{t.name}</TableCell>
-                                                    <TableCell>{t.email}</TableCell>
                                                     <TableCell>{t.dept || 'N/A'}</TableCell>
+                                                    <TableCell>{t.email}</TableCell>
                                                     <TableCell className="text-right">
                                                         <Button variant="ghost" size="icon" onClick={() => handleEditTeacher(t)}><Pencil className="h-4 w-4" /></Button>
                                                         <AlertDialog>
@@ -512,9 +512,8 @@ const CourseManagement = ({
                             size="icon"
                             onClick={() => openEditCourse(course)}
                             >
-                            <Pencil className="h-4 w-4 text-black" />
+                            <Pencil className="h-4 w-4" />
                             </Button>
-
                           {/* 🗑 DELETE */}
                             <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -1039,6 +1038,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+        
       <StatsCards 
         studentCount={students.length} 
         teacherCount={teachers.length} 

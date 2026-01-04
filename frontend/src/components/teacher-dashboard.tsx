@@ -205,12 +205,12 @@ const alreadyMarkedStudentIds = useMemo(() => {
       {/* ===== TEACHER + SUBJECT DISPLAY ===== */}
       {teacherCourses.length === 1 && (
         <div className="rounded-md border px-4 py-3 flex items-center justify-between">
-          <div className="text-base font-bold text-slate-800">
+          <div className="text-base font-bold ">
             {teacherCourses[0].name}
           </div>
 
-          <div className="text-lg text-black">
-            <span className="font-bold">Staff Name:</span> {teacher.name}
+          <div className="text-lg text-foreground">
+            <span className="font-bold ">Staff Name:</span> {teacher.name}
           </div>
         </div>
       )}
@@ -246,7 +246,7 @@ const alreadyMarkedStudentIds = useMemo(() => {
 {/* ===== ATTENDANCE MARKING BOX ===== */}
 <div className="border rounded-md p-4 space-y-4">
   {/* 🔹 HEADING */}
-  <h3 className="text-lg font-semibold text-slate-900 mb-4">
+  <h3 className="text-lg font-semibold  mb-4">
     Mark Attendances for Students
   </h3>
 
@@ -305,7 +305,7 @@ const alreadyMarkedStudentIds = useMemo(() => {
       {attendanceHistory.length > 0 && (
         <div className="border rounded-md p-4">
 <div className="flex items-center justify-between mb-4">
-  <h3 className="font-semibold text-lg">Attendance Details</h3>
+  <h3 className="font-semibold  text-lg">Attendance Details</h3>
 
   <div className="flex items-center gap-4">
     {/* FILTER */}

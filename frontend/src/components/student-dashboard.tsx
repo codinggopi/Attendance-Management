@@ -197,9 +197,9 @@ useEffect(() => {
   return (
     <div>
 
-    <div className="mb-6 p-5 bg-white rounded-lg shadow border border-gray-200">
-  <h2 className="text-2xl font-bold mb-1 text-center ">
-    Welcome, {studentName} 👋
+    <div className="mb-6 p-5 rounded-xl border border-border bg-card shadow-sm">
+  <h2 className="text-2xl font-bold mb-3 text-center text-foreground">
+    Welcome,  {studentName}
   </h2>
   <p className="text-muted-foreground text-center">
     Here you can view your attendance overview

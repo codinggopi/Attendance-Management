@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { GraduationCap, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 type PageHeaderProps = {
   title: string;
@@ -17,12 +18,16 @@ export function PageHeader({ title }: PageHeaderProps) {
         <div className="w-px h-8 bg-border mx-2 hidden md:block"></div>
         <h1 className="text-xl font-semibold text-foreground">{title}</h1>
       </div>
-      <Button variant="outline" asChild>
+      <div className="flex items-center gap-4">
+        <ThemeToggle  />
+        <Button variant="outline" asChild>
         <Link href="/">
           <LogOut className="mr-2 h-4 w-4" />
           Sign Out
         </Link>
       </Button>
+      </div>
+
     </header>
   );
 }
