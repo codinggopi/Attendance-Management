@@ -3,14 +3,13 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Student, Teacher, Course, AttendanceRecord
-from .serializers import ResetPasswordSerializer, StudentSerializer, TeacherSerializer, CourseSerializer, AttendanceRecordSerializer, LoginSerializer
+from .models import Notification,Feedback, Student, Teacher, Course, AttendanceRecord
+from .serializers import ResetPasswordSerializer, StudentSerializer, TeacherSerializer, CourseSerializer, AttendanceRecordSerializer, LoginSerializer, FeedbackSerializer, NotificationSerializer
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.exceptions import TokenError
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
-
 
 
 User = get_user_model()
@@ -307,6 +306,44 @@ class AttendanceRecordViewSet(viewsets.ModelViewSet):
         ).delete()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(detail=False, methods=["get"], url_path="summary")
+    def summary(self, request):
+        user = request.user
+
+        if user.role != "student":
+            return Response({"detail": "Only students allowed"}, status=403)
+
+        student = Student.objects.get(user=user)
+
+        records = AttendanceRecord.objects.filter(student=student)
+
+        total = records.count()
+        present = records.filter(status__in=["present", "late"]).count()
+
+        overall_percentage = round((present / total) * 100, 1) if total > 0 else 0
+
+        subject_data = []
+
+        for course in student.courses.all():
+            course_records = records.filter(course=course)
+            total_c = course_records.count()
+            present_c = course_records.filter(
+                status__in=["present", "late"]
+            ).count()
+
+            percent = round((present_c / total_c) * 100, 1) if total_c > 0 else 0
+
+            subject_data.append({
+                "courseId": course.id,
+                "courseName": course.name,
+                "percentage": percent
+            })
+
+        return Response({
+            "overall": overall_percentage,
+            "subjects": subject_data
+        })
 
 # This new ViewSet is needed to handle the "deleteAllUsers" call from the frontend
 class UserViewSet(viewsets.ViewSet):
@@ -324,3 +361,79 @@ class UserViewSet(viewsets.ViewSet):
         Student.objects.all().delete()
         Teacher.objects.all().delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class FeedbackViewSet(viewsets.ModelViewSet):
+    serializer_class = FeedbackSerializer
+    queryset = Feedback.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == "teacher":
+            return Feedback.objects.filter(teacher__user=user).select_related("student", "course")
+        if user.role == "student":
+            return Feedback.objects.filter(student__user=user).select_related("course")
+        return Feedback.objects.none()
+
+    def perform_create(self, serializer):
+        # student = self.request.user.student
+        # # student enrolled courses → teacher
+        # course = student.courses.first()   # or logic based on context
+        # teacher = course.teacher
+
+        serializer.save(
+            student=self.request.user.student,
+            teacher=serializer.validated_data.get("course").teacher
+        )
+    
+    @action(detail=False, methods=["get"], url_path="my")
+    def my_feedback(self, request):
+        user = request.user
+        if user.role == "student":
+            qs = Feedback.objects.filter(student__user=user)
+        elif user.role == "teacher":
+            qs = Feedback.objects.filter(teacher__user=user)
+        else:
+            qs = Feedback.objects.none()
+
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=["delete"], url_path="delete-all")
+    def delete_all(self, request):
+        user = request.user
+
+        if user.role != "teacher":
+            return Response(
+                {"detail": "Not allowed"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        qs = Feedback.objects.filter(course__teacher__user=user)
+        count = qs.count()
+        qs.delete()
+
+        return Response(
+            {"deleted": count},
+            status=status.HTTP_200_OK
+        )
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    serializer_class = NotificationSerializer
+    queryset = Notification.objects.all()
+
+    def get_queryset(self):
+        user = self.request.user
+
+        if user.role == "teacher":
+            return Notification.objects.filter(teacher__user=user)
+        if user.role == "student":
+            return Notification.objects.filter(recipient=user)
+        return Notification.objects.none()
+    
+    @action(detail=False, methods=["get"], url_path="my")
+    def my_notifications(self, request):
+        user = request.user
+        qs = Notification.objects.filter(recipient=user)
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)

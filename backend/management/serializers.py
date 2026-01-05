@@ -1,6 +1,6 @@
 from typing import __all__
-from rest_framework import serializers
-from .models import Student, Teacher, Course, AttendanceRecord
+from rest_framework import serializers 
+from .models import Notification,Feedback , Student, Teacher, Course, AttendanceRecord
 from django.contrib.auth import authenticate
 from .models import User
 from django.contrib.auth import get_user_model
@@ -19,13 +19,12 @@ class StudentSerializer(serializers.ModelSerializer):
         user_data = validated_data.pop("user")
         email = user_data.get("email")  
 
-        # ❌ Prevent duplicate user
         if User.objects.filter(username=email).exists():
             raise serializers.ValidationError({
                 "email": "User with this email already exists"
             })
 
-        # ✅ Atomic transaction (VERY IMPORTANT)
+
         with transaction.atomic():
             user = User.objects.create_user(
                 username=email,
@@ -147,11 +146,12 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'studentId',
-            'studentName',   # ✅ ADD THIS
+            'studentName', 
             'courseId',
             'date',
             'status'
         ]
+
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
@@ -173,3 +173,31 @@ class ResetPasswordSerializer(serializers.Serializer):
         if not User.objects.filter(username=value).exists():
             raise serializers.ValidationError("User does not exist")
         return value
+    
+class FeedbackSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(
+        source="student.name",
+        read_only=True
+    )
+    course_name = serializers.CharField(
+        source="course.name",
+        read_only=True
+    )
+
+    class Meta:
+        model = Feedback
+        fields = "__all__"
+        read_only_fields = [
+            "student",
+            "teacher",
+            "student_name",
+            "course_name",
+            "created_at",
+        ]
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = "__all__"
+        read_only_fields = ["recipient", "created_at", "is_read"]

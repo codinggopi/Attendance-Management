@@ -2,14 +2,16 @@ import type {
   Student,
   Teacher,
   Course,
+  Feedback,
+  Notification,
   AttendanceRecord,
 } from "./types";
 
 // TODO: Replace with your actual backend URL
 
 // const BASE_URL = 'https://t2cl04dd-8000.inc1.devtunnels.ms';
-// const BASE_URL = 'https://codinggopi.pythonanywhere.com/api';
-const BASE_URL = 'http://localhost:8000/api';
+const BASE_URL = 'https://codinggopi.pythonanywhere.com/api';
+// const BASE_URL = 'http://localhost:8000/api';
 
 
 const authFetch = async (url: string, options: RequestInit = {}) => {
@@ -377,4 +379,97 @@ export const deleteAllAttendanceRecords = async (): Promise<void> => {
     }
 };
 
+export const getAttendanceSummary = async () => {
+  const res = await authFetch(`${BASE_URL}/attendance/summary/`);
+  return handleResponse(res);
+};
+export const getMyAttendanceRecords = async (): Promise<AttendanceRecord[]> => {
+  const res = await authFetch(`${BASE_URL}/attendance/my-records/`);
+  return handleResponse(res);
+}
+
+// export async function getTeacherFeedback() {
+//   const token = localStorage.getItem("access");
+
+//   const res = await fetch(
+//     "http://localhost:8000/api/feedback/",
+//     {
+//       headers: {
+//         Authorization: `Bearer ${token}`,
+//       },
+//     }
+//   );
+
+//   if (!res.ok) {
+//     throw new Error("Failed to fetch feedback");
+//   }
+
+//   return res.json();
+// }
+
+
+/* ================= TEACHER FEEDBACK ================= */
+export const getTeacherFeedback = async () => {
+  const res = await authFetch(`${BASE_URL}/feedback/`);
+  return handleResponse(res);
+};
+
+/* ================= TEACHER NOTIFICATIONS ================= */
+export const getTeacherNotifications = async () => {
+  const res = await authFetch(`${BASE_URL}/notifications/`);
+  return handleResponse(res);
+};
+
+export async function submitFeedback(data: {
+  course: number;
+  message: string;
+}) {
+  const token = localStorage.getItem("access");
+
+  const res = await fetch(`${BASE_URL}/feedback/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to submit feedback");
+  }
+
+  return res.json();
+}
+
+
+export const getMyFeedback = async (): Promise<Feedback[]> => {
+  const res = await authFetch(`${BASE_URL}/feedback/my/`);
+  return handleResponse(res);
+};
+
+/* -------------------- NOTIFICATION APIs -------------------- */
+
+export const getMyNotifications = async (): Promise<Notification[]> => {
+  const res = await authFetch(`${BASE_URL}/notifications/my/`);
+  return handleResponse(res);
+};
+export const deleteFeedback = async (id: number) => {
+  const res = await authFetch(`${BASE_URL}/feedback/${id}/`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error("Delete failed");
+};
+
+export const deleteAllFeedback = async () => {
+  const res = await authFetch(`${BASE_URL}/feedback/delete-all/`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    throw new Error("Delete all feedback failed");
+  }
+
+  return res.json();
+};
 

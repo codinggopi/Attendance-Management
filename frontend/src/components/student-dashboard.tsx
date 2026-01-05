@@ -9,6 +9,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableHeader,
@@ -22,11 +23,37 @@ import {
   XCircle,
   Clock,
   CalendarDays,
+  Bell,
+  MessageSquare,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { AttendanceRecord, AttendanceStatus, Course } from "@/lib/types";
 import * as api from "@/lib/api";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
+// 🔐 LOCAL-ONLY FEEDBACK HIDE (STUDENT SIDE)
+
+const getHiddenFeedbackIds = (): number[] => {
+  if (typeof window === "undefined") return [];
+  const data = localStorage.getItem("hidden_feedbacks");
+  return data ? JSON.parse(data) : [];
+};
+
+const hideFeedback = (id: number) => {
+  if (typeof window === "undefined") return;
+
+  const existing = getHiddenFeedbackIds();
+  localStorage.setItem(
+    "hidden_feedbacks",
+    JSON.stringify([...existing, id])
+  );
+};
 /* ================= TIME CARD ================= */
 const TimeDisplayCard = () => {
   const [now, setNow] = useState(new Date());
@@ -43,7 +70,7 @@ const TimeDisplayCard = () => {
           <Clock className="text-primary" />
           Current Time
         </CardTitle>
-        <CardDescription>Official TIME ZONE</CardDescription>
+        <CardDescription>Official Time</CardDescription>
       </CardHeader>
       <CardContent className="text-center">
         <p className="text-muted-foreground">
@@ -62,7 +89,7 @@ const TimeDisplayCard = () => {
   );
 };
 
-/* ================= ATTENDANCE CARD ================= */
+/* ================= ATTENDANCE HISTORY ================= */
 const AttendanceHistoryCard = ({
   courses,
   records,
@@ -102,9 +129,6 @@ const AttendanceHistoryCard = ({
           <CalendarDays className="text-primary" />
           My Attendance History
         </CardTitle>
-        <CardDescription>
-          Attendance records for your enrolled courses
-        </CardDescription>
       </CardHeader>
 
       <CardContent>
@@ -155,33 +179,83 @@ const AttendanceHistoryCard = ({
   );
 };
 
-
 /* ================= MAIN DASHBOARD ================= */
 export default function StudentDashboard() {
   const { toast } = useToast();
+
   const [studentName, setStudentName] = useState("");
   const [courses, setCourses] = useState<Course[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [summary, setSummary] = useState<any>(null);
+  const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
+  const [hiddenIds, setHiddenIds] = useState<number[]>([]);
+  useEffect(() => {
+  setHiddenIds(getHiddenFeedbackIds());
+}, []);
+  const visibleFeedbacks = feedbacks.filter((f) => !hiddenIds.includes(f.id));
+
+
+  useEffect(() => {
+  const token = localStorage.getItem("access");
+  if (!token) {
+    window.location.href = "/";
+  }
+}, []);
+
+const authFetch = async (url: string, options: RequestInit = {}) => {
+  const token = localStorage.getItem("access");
+
+  if (!token) {
+    window.location.href = "/";
+    throw new Error("No access token");
+  }
+
+  return fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {}),
+    },
+  });
+};
+
 
 useEffect(() => {
   const load = async () => {
     try {
-      const [studentData, courseData, attendanceData] =
-        await Promise.all([
-          api.getStudents(),          // 👈 NEW
-          api.getCourses(),
-          api.getAttendanceRecords(),
-        ]);
+      const [
+        summaryData,
+        studentData,
+        courseData,
+        attendanceData,
+        feedbackData,
+        notificationData,
+      ] = await Promise.all([
+        api.getAttendanceSummary(),
+        api.getStudents(),
+        api.getCourses(),
+        api.getAttendanceRecords(),
+        api.getMyFeedback(),        // ✅
+        api.getMyNotifications(),   // ✅
+      ]);
 
+      setSummary(summaryData);
       setStudentName(studentData[0]?.name || "");
       setCourses(courseData);
       setAttendance(attendanceData);
+      setFeedbacks(feedbackData || []);
+      setNotifications(notificationData || []);
     } catch {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to load student data",
+        description: "Failed to load student dashboard",
       });
     } finally {
       setLoading(false);
@@ -195,28 +269,246 @@ useEffect(() => {
   if (loading) return <p>Loading...</p>;
 
   return (
-    <div>
+    <div className="space-y-6">
+      {/* Welcome */}
+      <Card>
+        <CardContent className="p-5 text-center">
+          <h2 className="text-2xl font-bold">Welcome, {studentName}</h2>
+          <p className="text-muted-foreground">
+            Here you can view your attendance overview
+          </p>
+        </CardContent>
+      </Card>
+      {/* Notifications */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell /> Notifications
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {notifications.length === 0 ? (
+            <p className="text-muted-foreground text-center">
+              No notifications
+            </p>
+          ) : (
+            notifications.map((n) => (
+              <div key={n.id} className="border rounded p-3 mb-3">
+                <p className="font-semibold">{n.title}</p>
+                <p className="text-sm text-muted-foreground">
+                  {new Date(n.created_at).toLocaleDateString()}
+                </p>
+                <p>{n.message}</p>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
 
-    <div className="mb-6 p-5 rounded-xl border border-border bg-card shadow-sm">
-  <h2 className="text-2xl font-bold mb-3 text-center text-foreground">
-    Welcome,  {studentName}
-  </h2>
-  <p className="text-muted-foreground text-center">
-    Here you can view your attendance overview
-  </p>
-</div>
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-1">
+      {/* Summary */}
+      {summary && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <AttendanceOverview percentage={summary.overall} />
+          <SubjectAttendance subjects={summary.subjects} />
+        </div>
+      )}
+
+      {/* Time + Attendance */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <TimeDisplayCard />
+        <div className="lg:col-span-2">
+          <AttendanceHistoryCard
+            courses={courses}
+            records={attendance}
+          />
+        </div>
       </div>
+<Card className="mt-6">
+  <CardHeader>
+    <CardTitle>Give Feedback</CardTitle>
+    <CardDescription>
+      Your feedback will be shared with your teacher
+    </CardDescription>
+  </CardHeader>
 
-      <div className="lg:col-span-2">
-        <AttendanceHistoryCard
-          courses={courses}
-          records={attendance}
-        />
-      </div>
+  <CardContent className="space-y-3">
+
+    {/* COURSE SELECT */}
+    <Select
+      value={selectedCourseId?.toString()}
+      onValueChange={(v) => setSelectedCourseId(Number(v))}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder="Select Course" />
+      </SelectTrigger>
+
+      <SelectContent>
+        {courses.map((course) => (
+          <SelectItem
+            key={course.id}
+            value={course.id.toString()}
+          >
+            {course.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+
+    {/* FEEDBACK TEXT */}
+    <textarea
+      className="w-full min-h-[100px] border rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-primary"
+      placeholder="Write your feedback here..."
+      value={feedbackText}
+      onChange={(e) => setFeedbackText(e.target.value)}
+    />
+
+    <Button
+      className="mt-2"
+      disabled={submitting || !feedbackText.trim() || !selectedCourseId}
+      onClick={async () => {
+        try {
+          setSubmitting(true);
+
+          await api.submitFeedback({
+            message: feedbackText,
+            course: selectedCourseId, // ✅
+          });
+
+          const updatedFeedback = await api.getMyFeedback();
+          setFeedbacks(updatedFeedback);
+
+          toast({
+            title: "Feedback sent",
+            description: "Thank you for your feedback!",
+          });
+
+          setFeedbackText("");
+          setSelectedCourseId(null);
+        } catch {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to submit feedback",
+          });
+        } finally {
+          setSubmitting(false);
+        }
+      }}
+    >
+      {submitting ? "Submitting..." : "Submit Feedback"}
+    </Button>
+
+  </CardContent>
+</Card>
+
+
+      {/* Feedback */}
+<Card>
+  <CardHeader>
+    <CardTitle className="flex items-center gap-2">
+      <MessageSquare /> My Feedback
+    </CardTitle>
+  </CardHeader>
+
+  <CardContent>
+    {visibleFeedbacks.length === 0 ? (
+      <p className="text-muted-foreground text-center">
+        No feedback submitted
+      </p>
+    ) : (
+      visibleFeedbacks.map((f) => (
+        <div
+          key={f.id}
+          className="border rounded p-3 mb-3 flex justify-between items-start"
+        >
+          <div>
+            <p className="text-xs text-muted-foreground">
+              {new Date(f.created_at).toLocaleString("en-IN", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })}
+            </p>
+            <p className="mt-1">{f.message}</p>
+          </div>
+
+          {/* 🗑️ STUDENT DELETE (LOCAL ONLY) */}
+          <Button
+            size="icon"
+            variant="ghost"
+            className="text-red-500"
+            onClick={() => {
+              hideFeedback(f.id);              // ✅ now defined
+              setHiddenIds((prev) => [...prev, f.id]);
+            }}
+          >
+            🗑️
+          </Button>
+        </div>
+      ))
+    )}
+  </CardContent>
+</Card>
+
     </div>
-  </div>
   );
 }
+
+/* ================= OVERALL % ================= */
+export function AttendanceOverview({ percentage }: { percentage: number }) {
+  const color =
+    percentage >= 75
+      ? "text-green-600"
+      : percentage >= 60
+      ? "text-yellow-500"
+      : "text-red-600";
+
+  return (
+    <Card className="text-center">
+      <CardHeader>
+        <CardTitle>Overall Attendance</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className={`text-5xl font-bold ${color}`}>
+          {percentage}%
+        </div>
+        <p className="text-muted-foreground mt-2">
+          Required: 75%
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ================= SUBJECT WISE ================= */
+export function SubjectAttendance({ subjects }: any) {
+  return (
+    <div className="space-y-4">
+      {subjects.map((s: any) => (
+        <div key={s.courseId}>
+          <div className="flex justify-between mb-1">
+            <span>{s.courseName}</span>
+            <span>{s.percentage}%</span>
+          </div>
+          <div className="h-2 bg-muted rounded">
+            <div
+              className={`h-2 rounded ${
+                s.percentage >= 75
+                  ? "bg-green-500"
+                  : s.percentage >= 60
+                  ? "bg-yellow-500"
+                  : "bg-red-500"
+              }`}
+              style={{ width: `${s.percentage}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+export const logoutfun = async () => {
+  localStorage.clear();
+  window.location.href = "/";
+};
+
+

@@ -3,12 +3,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { MessageSquare } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ListChecks, Pencil } from "lucide-react";
+import { Bell, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Course, Student, AttendanceStatus, Teacher } from '@/lib/types';
 import {
@@ -26,6 +26,184 @@ import { Trash2 } from "lucide-react";
 import { isToday } from 'date-fns';
 
 
+/* ================= STUDENTS FEEDBACK SECTION ================= */
+const TeacherFeedbackSection = () => {
+  const { toast } = useToast();
+  const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getTeacherFeedback()
+      .then(setFeedbacks)
+      .catch(() => {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load student feedback",
+        });
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <Card className="mt-6">
+      <CardHeader className="flex flex-row items-start justify-between">
+  {/* LEFT SIDE */}
+  <div>
+    <CardTitle className="flex items-center gap-2">
+      <MessageSquare size={20} />
+      Students Feedbacks
+    </CardTitle>
+    <CardDescription>
+      Feedback submitted by Students
+    </CardDescription>
+  </div>
+
+  {/* RIGHT SIDE */}
+  <Button
+    variant="destructive"
+    size="sm"
+    className="flex items-center gap-2 mt-1"
+    onClick={async () => {
+      if (!confirm("Delete all feedbacks?")) return;
+
+      await api.deleteAllFeedback();
+      setFeedbacks([]);
+
+      toast({
+        title: "Deleted",
+        description: "All feedbacks removed",
+      });
+    }}
+  >
+    <Trash2 size={16} />
+    Delete All
+  </Button>
+</CardHeader>
+      <CardContent className="space-y-4">
+        {loading && (
+          <p className="text-center text-muted-foreground">
+            Loading feedback...
+          </p>
+        )}
+
+        {!loading && feedbacks.length === 0 && (
+          <p className="text-center text-muted-foreground">
+            No feedback received yet
+          </p>
+        )}
+
+        {feedbacks.map((f) => (
+          <div
+            key={f.id}
+            className="border rounded-md p-4 bg-muted flex justify-between items-start gap-4"
+          >
+            {/* LEFT */}
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold">{f.studentName}</p>
+              </div>
+
+              <p className="text-xs text-muted-foreground mt-1">
+                {new Date(f.created_at).toLocaleString("en-IN", {
+                  dateStyle: "full",
+                  timeStyle: "short",
+                })}
+              </p>
+
+              <p className="mt-2">{f.message}</p>
+            </div>
+            
+            {/* RIGHT – DELETE */}
+            <div>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="text-red-500 hover:bg-red-100"
+                onClick={async () => {
+
+                  if (!confirm("Delete this feedback?")) return;
+
+                  try {
+                    await api.deleteFeedback(f.id);
+
+                    setFeedbacks(prev => 
+                      prev.filter(item => item.id !== f.id)
+                    );
+                    toast({ title: "Feedback deleted" });
+                  } catch {
+                    toast({
+                      variant: "destructive",
+                      title: "Delete failed",
+                    });
+                  }
+                }}
+              >
+                <Trash2 size={18} />
+              </Button>
+            </div>
+          </div>))}
+
+        </CardContent>
+      </Card>
+  );
+};
+
+/* ================= TEACHER NOTIFICATIONS ================= */
+const TeacherNotificationSection = () => {
+  const { toast } = useToast();
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getTeacherNotifications()
+      .then(setNotifications)
+      .catch(() => {
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Bell size={18} />
+          Notifications
+        </CardTitle>
+        <CardDescription>
+          System & student updates
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="space-y-3">
+        {loading && (
+          <p className="text-center text-muted-foreground">
+            Loading notifications...
+          </p>
+        )}
+
+        {!loading && notifications.length === 0 && (
+          <p className="text-center text-muted-foreground">
+            No notifications
+          </p>
+        )}
+
+        {notifications.map((n) => (
+          <div key={n.id} className="border rounded-md p-3">
+            <p className="font-semibold">{n.title}</p>
+            <p className="text-xs text-muted-foreground">
+              {new Date(n.created_at).toLocaleString()}
+            </p>
+            <p className="mt-1">{n.message}</p>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+};
+
+
+
 /* ================= ATTENDANCE TAKER ================= */
 const AttendanceTaker = ({
   allStudents,
@@ -36,7 +214,7 @@ const AttendanceTaker = ({
 
 }: {
   allStudents: Student[];
-  teacher: Teacher;          // ✅ ADD
+  teacher: Teacher;          
   courses: Course[];
   onSaveAttendance: (
     records: Record<string, AttendanceStatus>,
@@ -214,6 +392,8 @@ const alreadyMarkedStudentIds = useMemo(() => {
           </div>
         </div>
       )}
+      {/* 🔔 NOTIFICATIONS HERE */}
+      <TeacherNotificationSection />
 
       {/* ===== BULK ENROLL STUDENTS ===== */}
       <div className="space-y-3 border rounded-md p-4">
@@ -344,7 +524,6 @@ const alreadyMarkedStudentIds = useMemo(() => {
   <Trash2 size={15} />
   Delete All
 </Button>
-
   </div>
 </div>
 
@@ -354,7 +533,7 @@ const alreadyMarkedStudentIds = useMemo(() => {
       <TableHead>Student</TableHead>
       <TableHead>Date</TableHead>
       <TableHead>Status</TableHead>
-      <TableHead className='text-balance'>Actions</TableHead>
+      <TableHead className='text-balance'>Action</TableHead>
     </TableRow>
   </TableHeader>
 
@@ -449,16 +628,20 @@ const alreadyMarkedStudentIds = useMemo(() => {
       <Trash2 size={18} />
     </Button>
 
+
   </div>
 </TableCell>
+
 
 </TableRow>
 ))}
 </TableBody>
 </Table>
-        </div>
-      )}
 
+
+</div>
+
+      )}
     </CardContent>
   </Card>
   );
@@ -550,5 +733,7 @@ export default function TeacherDashboard() {
           onEnrollStudent={handleEnrollStudent}
         />
       )}
+      <TeacherFeedbackSection />
     </div>
-  );}
+  );
+}

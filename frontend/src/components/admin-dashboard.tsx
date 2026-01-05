@@ -557,8 +557,7 @@ const CourseManagement = ({
                 required
                 className="
                     text-sm
-                    text-black font-sans
-                    placeholder:text-zinc-800
+                    font-sans
                     tracking-wide
                 " />
                 </div>
