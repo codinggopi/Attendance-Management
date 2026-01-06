@@ -10,8 +10,8 @@ import type {
 // TODO: Replace with your actual backend URL
 
 // const BASE_URL = 'https://t2cl04dd-8000.inc1.devtunnels.ms';
-// const BASE_URL = 'https://codinggopi.pythonanywhere.com/api';
-const BASE_URL = 'http://localhost:8000/api';
+const BASE_URL = 'https://codinggopi.pythonanywhere.com/api';
+// const BASE_URL = 'http://localhost:8000/api';
 
 
 const authFetch = async (url: string, options: RequestInit = {}) => {
