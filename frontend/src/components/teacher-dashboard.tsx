@@ -484,10 +484,15 @@ const alreadyMarkedStudentIds = useMemo(() => {
 
       {attendanceHistory.length > 0 && (
         <div className="border rounded-md p-4">
-<div className="flex items-center justify-between mb-4">
-  <h3 className="font-semibold  text-lg">Attendance Details</h3>
+<div className="flex items-center justify-between gap-2 mb-4 w-full">
+  {/* LEFT : TITLE */}
+  <h3 className="font-semibold text-lg flex-1 truncate">
+    Attendance Details
+  </h3>
 
-  <div className="flex items-center gap-4">
+  {/* RIGHT : ACTIONS */}
+  <div className="flex items-center gap-2 flex-shrink-0">
+
     {/* FILTER */}
     <Select
       value={statusFilter}
@@ -495,8 +500,8 @@ const alreadyMarkedStudentIds = useMemo(() => {
         setStatusFilter(v as "all" | "present" | "absent" | "late")
       }
     >
-      <SelectTrigger className="w-40">
-        <SelectValue placeholder="Filter Status" />
+      <SelectTrigger className="w-24 sm:w-40 h-9">
+        <SelectValue />
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="all">All</SelectItem>
@@ -505,28 +510,29 @@ const alreadyMarkedStudentIds = useMemo(() => {
         <SelectItem value="late">Late</SelectItem>
       </SelectContent>
     </Select>
-    {/* DELETE ALL */}
-<Button
-  variant="destructive"
-  className="flex items-center gap-2"
-  disabled={attendanceHistory.length === 0}
-  onClick={async () => {
-    if (!selectedCourseId) return;
 
-    if (!confirm("Delete ALL attendance for this course?")) return;
+    {/* DELETE */}
+    <Button
+      variant="destructive"
+      size="icon"
+      className="h-9 w-9 sm:w-auto sm:px-4"
+      disabled={attendanceHistory.length === 0}
+      onClick={async () => {
+        if (!selectedCourseId) return;
+        if (!confirm("Delete ALL attendance for this course?")) return;
 
-    await api.deleteAttendanceByCourse(selectedCourseId);
-
-    toast({ title: "Course attendance deleted" });
-    loadAttendanceHistory(selectedCourseId);
-  }}
->
-  <Trash2 size={15} />
-  Delete All
-</Button>
+        await api.deleteAttendanceByCourse(selectedCourseId);
+        toast({ title: "Course attendance deleted" });
+        loadAttendanceHistory(selectedCourseId);
+      }}
+    >
+      <Trash2 size={16} />
+      <span className="hidden sm:inline ml-2">Delete All</span>
+    </Button>
   </div>
 </div>
 
+{/* TABLE */}
 <Table>
   <TableHeader>
     <TableRow>

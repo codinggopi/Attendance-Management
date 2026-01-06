@@ -10,8 +10,8 @@ import type {
 // TODO: Replace with your actual backend URL
 
 // const BASE_URL = 'https://t2cl04dd-8000.inc1.devtunnels.ms';
-const BASE_URL = 'https://codinggopi.pythonanywhere.com/api';
-// const BASE_URL = 'http://localhost:8000/api';
+// const BASE_URL = 'https://codinggopi.pythonanywhere.com/api';
+const BASE_URL = 'http://localhost:8000/api';
 
 
 const authFetch = async (url: string, options: RequestInit = {}) => {
@@ -472,4 +472,35 @@ export const deleteAllFeedback = async () => {
 
   return res.json();
 };
+/* ================= ADMIN NOTIFICATIONS ================= */
 
+// GET all notifications (admin)
+export const getAllNotifications = async () => {
+  const res = await authFetch(`${BASE_URL}/notifications/`);
+  if (!res.ok) throw new Error("Failed to fetch notifications");
+  return res.json();
+};
+
+// SEND notification (admin)
+export const sendNotification = async (data: {
+  title: string;
+  message: string;
+  role: "student" | "teacher" | "all";
+}) => {
+  const res = await authFetch(`${BASE_URL}/notifications/`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) throw new Error("Failed to send notification");
+  return res.json();
+};
+
+// DELETE notification (admin)
+export const deleteNotification = async (id: number) => {
+  const res = await authFetch(`${BASE_URL}/notifications/${id}/`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) throw new Error("Failed to delete notification");
+};

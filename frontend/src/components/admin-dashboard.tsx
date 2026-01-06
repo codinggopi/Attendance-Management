@@ -31,6 +31,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { updateCourse } from '@/lib/api';
+import { NotificationSection } from './NotificationSection';
 
 
 // --- Sub-components for Admin Dashboard ---
@@ -77,8 +78,10 @@ const StatsCards = ({ studentCount, teacherCount, courseCount, attendanceRecords
                 </CardContent>
             </Card>
         </div>
+        
     );
 };
+
 
 const UserManagement = ({ students, teachers, onAddStudent, onAddTeacher, onUpdateStudent, onUpdateTeacher, onDeleteStudent, onDeleteTeacher, onDeleteAllStudents, onDeleteAllTeachers }: { students: Student[], teachers: Teacher[], onAddStudent: (student: Omit<Student, 'id'>) => void, onAddTeacher: (teacher: Omit<Teacher, 'id'>) => void, onUpdateStudent: (student: Student) => void, onUpdateTeacher: (teacher: Teacher) => void, onDeleteStudent: (id: number) => void, onDeleteTeacher: (id: number) => void, onDeleteAllStudents: () => void, onDeleteAllTeachers: () => void }) => {
     const { toast } = useToast();
@@ -451,6 +454,7 @@ const CourseManagement = ({
     return (
     <Card>
         <CardHeader className="flex flex-row items-start justify-between">
+        
         <div>
             <CardTitle>Course Management</CardTitle>
             <CardDescription>Manage and add new courses to the system.</CardDescription>
@@ -478,7 +482,6 @@ const CourseManagement = ({
             </AlertDialogContent>
         </AlertDialog>
         </CardHeader>
-
         <CardContent>
         <Tabs defaultValue="view">
             <TabsList className="grid w-full grid-cols-2">
@@ -1044,6 +1047,7 @@ export default function AdminDashboard() {
         courseCount={courses.length}
         attendanceRecords={attendanceRecords}
         />
+      <div><NotificationSection /></div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <UserManagement 
           students={students} 

@@ -1,3 +1,4 @@
+from urllib import request
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -10,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.exceptions import TokenError
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
+from django.db.models import Q
 
 
 User = get_user_model()
@@ -417,6 +419,7 @@ class FeedbackViewSet(viewsets.ModelViewSet):
             {"deleted": count},
             status=status.HTTP_200_OK
         )
+from django.db import models
 
 class NotificationViewSet(viewsets.ModelViewSet):
     serializer_class = NotificationSerializer
@@ -425,15 +428,38 @@ class NotificationViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
 
-        if user.role == "teacher":
-            return Notification.objects.filter(teacher__user=user)
+        # 👨‍🎓 STUDENT
         if user.role == "student":
-            return Notification.objects.filter(recipient=user)
-        return Notification.objects.none()
+            return Notification.objects.filter(
+                Q(role="all") |
+                Q(role=request.user.role) |
+                Q(recipient=request.user)
+            ).order_by("-created_at")
+
+        # 👨‍🏫 TEACHER
+        if user.role == "teacher":
+            return Notification.objects.filter(
+                models.Q(role="teacher") |
+                models.Q(role="all") |
+                models.Q(recipient=user)
+            ).order_by("-created_at")
+
+        # 👑 ADMIN
+        return Notification.objects.all().order_by("-created_at")
+
     
+    def perform_create(self, serializer):
+        serializer.save(recipient=None)  # ✅ broadcast notification
+        
     @action(detail=False, methods=["get"], url_path="my")
     def my_notifications(self, request):
         user = request.user
-        qs = Notification.objects.filter(recipient=user)
+
+        qs = Notification.objects.filter(
+            Q(role="all") |
+            Q(role=user.role) |
+            Q(recipient=user)
+        ).order_by("-created_at")
+
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)

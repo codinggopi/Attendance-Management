@@ -242,7 +242,7 @@ useEffect(() => {
         api.getCourses(),
         api.getAttendanceRecords(),
         api.getMyFeedback(),        // ✅
-        api.getMyNotifications(),   // ✅
+        api.getMyNotifications(), // ✅
       ]);
 
       setSummary(summaryData);

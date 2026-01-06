@@ -94,10 +94,27 @@ class Feedback(models.Model):
         return f"{self.student.name} → {self.course.name}"
         
 class Notification(models.Model):
-    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    title = models.CharField(max_length=200)
     message = models.TextField()
+
+    role = models.CharField(
+        max_length=20,
+        choices=[
+            ("student", "Student"),
+            ("teacher", "Teacher"),
+            ("all", "All"),
+        ],
+        default="all"
+    )
+
+    recipient = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,      # ✅ IMPORTANT
+        blank=True      # ✅ IMPORTANT
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
-    is_read = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"To: {self.recipient.username} - {self.message[:20]}"
+        return self.title

@@ -199,5 +199,4 @@ class FeedbackSerializer(serializers.ModelSerializer):
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
-        fields = "__all__"
-        read_only_fields = ["recipient", "created_at", "is_read"]
+        fields = ["id", "title", "message", "role", "created_at"]
